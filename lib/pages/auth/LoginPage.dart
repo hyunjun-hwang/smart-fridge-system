@@ -4,6 +4,7 @@ import 'package:smart_fridge_system/pages/auth/FindAuthInfoPage.dart';
 import 'package:smart_fridge_system/widgets/primary_button.dart';
 import 'package:smart_fridge_system/widgets/custom_text_field.dart';
 import 'package:smart_fridge_system/pages/auth/signup_page.dart';
+import 'package:smart_fridge_system/pages/home/mainpage.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
@@ -52,7 +53,12 @@ class LoginPage extends StatelessWidget {
                 // 4. 로그인/회원가입 버튼
                 PrimaryButton(
                   text: '로그인',
-                  onPressed: () { /* 로그인 로직 */ },
+                  onPressed: () { Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const MainScreen()),
+                      );
+                      },
                 ),
                 const SizedBox(height: 13),
                 PrimaryButton(

@@ -7,7 +7,6 @@ class FindAuthInfoPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 공통으로 사용할 스타일 정의
     final inputBorder = OutlineInputBorder(
       borderRadius: BorderRadius.circular(30.0),
       borderSide: const BorderSide(color: AppColors.textSecondary, width: 1.5),
