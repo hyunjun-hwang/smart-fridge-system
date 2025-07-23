@@ -1,24 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:smart_fridge_system/constants/app_colors.dart';
+import 'package:smart_fridge_system/data/models/food_item.dart';
+import 'package:smart_fridge_system/data/repositories/food_repository.dart';
+import 'package:smart_fridge_system/ui/widgets/food_list_item_card.dart'; // <-- 새로 추가된 import
 
-// --- 데이터 모델 ---
-class FoodItem {
-  final String name;
-  final String quantity;
-  final String imageUrl;
-  final String expiryDate;
-  final int dDay;
-
-  FoodItem({
-    required this.name,
-    required this.quantity,
-    required this.imageUrl,
-    required this.expiryDate,
-    required this.dDay,
-  });
-}
-
-// --- 페이지 위젯 ---
 class FridgePage extends StatefulWidget {
   const FridgePage({super.key});
 
@@ -27,12 +12,10 @@ class FridgePage extends StatefulWidget {
 }
 
 class _FridgePageState extends State<FridgePage> {
-  // 샘플 데이터
-  final List<FoodItem> foodItems = [
-    FoodItem(name: '사과', quantity: '6개', imageUrl: 'https://images.unsplash.com/photo-1579613832125-5d34a13ffe2a?q=80&w=2940&auto=format&fit=crop', expiryDate: '2025. 08. 22', dDay: 30),
-    FoodItem(name: '아보카도', quantity: '2개', imageUrl: 'https://images.unsplash.com/photo-1579613832125-5d34a13ffe2a?q=80&w=2940&auto=format&fit=crop', expiryDate: '2025. 08. 02', dDay: 10),
-    FoodItem(name: '소고기', quantity: '350g', imageUrl: 'https://images.unsplash.com/photo-1579613832125-5d34a13ffe2a?q=80&w=2940&auto=format&fit=crop', expiryDate: '2025. 07. 24', dDay: 1),
-  ];
+  // 데이터 로직을 담고 있는 Repository 인스턴스 생성
+  final FoodRepository _foodRepository = FoodRepository();
+  // 데이터를 비동기적으로 담아둘 Future 변수 선언
+  Future<List<FoodItem>>? _foodItemsFuture;
 
   // 필터 및 정렬 상태 관리 변수
   final List<String> categories = ['전체', '과일', '고기', '채소', '유제품'];
@@ -45,13 +28,19 @@ class _FridgePageState extends State<FridgePage> {
   String selectedSortOrder = '유통기한 임박한 순';
 
   @override
+  void initState() {
+    super.initState();
+    // 위젯이 처음 생성될 때 데이터 로딩 시작
+    _foodItemsFuture = _foodRepository.getFoodItems();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // 1. 전체 배경을 옅은 회색으로 설정
     return Container(
       color: const Color(0xFFF2F2F7),
       child: Column(
         children: [
-          // 2. 필터 영역을 별도의 흰색 컨테이너로 묶고 그림자 효과 적용
+          // 필터 영역
           Container(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
             decoration: BoxDecoration(
@@ -73,15 +62,32 @@ class _FridgePageState extends State<FridgePage> {
               ],
             ),
           ),
-          // 3. 목록 부분
+          // 목록 부분
           Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.all(20), // 목록 전체의 여백
-              itemCount: foodItems.length,
-              itemBuilder: (context, index) {
-                return FoodListItemCard(item: foodItems[index]);
+            child: FutureBuilder<List<FoodItem>>(
+              future: _foodItemsFuture, // 이 Future의 상태 변화를 감지
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(child: Text('데이터를 불러오는 데 실패했습니다: ${snapshot.error}'));
+                }
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const Center(child: Text('냉장고에 음식이 없어요!'));
+                }
+
+                final foodItems = snapshot.data!;
+                return ListView.separated(
+                  padding: const EdgeInsets.all(20),
+                  itemCount: foodItems.length,
+                  itemBuilder: (context, index) {
+                    // 분리된 위젯을 여기서 사용합니다.
+                    return FoodListItemCard(item: foodItems[index]);
+                  },
+                  separatorBuilder: (context, index) => const SizedBox(height: 12),
+                );
               },
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
             ),
           ),
         ],
@@ -91,14 +97,13 @@ class _FridgePageState extends State<FridgePage> {
 
   // --- 상단 검색 및 필터 위젯 ---
   Widget _buildSearchAndFilter() {
+    // ... (이하 동일, 내용은 생략)
     return Column(
       children: [
         Row(
           children: [
-            // '냉장실' 드롭다운 버튼
             _buildStorageDropdown(),
             const SizedBox(width: 8),
-            // 검색창
             Expanded(
               child: TextField(
                 decoration: InputDecoration(
@@ -122,7 +127,6 @@ class _FridgePageState extends State<FridgePage> {
           ],
         ),
         const SizedBox(height: 12),
-        // 카테고리 필터 칩
         SizedBox(
           height: 36,
           child: ListView.separated(
@@ -158,6 +162,7 @@ class _FridgePageState extends State<FridgePage> {
 
   // --- 보관 장소 선택 드롭다운 ---
   Widget _buildStorageDropdown() {
+    // ... (이하 동일, 내용은 생략)
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -191,6 +196,7 @@ class _FridgePageState extends State<FridgePage> {
 
   // --- 정렬 기준 선택 드롭다운 ---
   Widget _buildSortButton() {
+    // ... (이하 동일, 내용은 생략)
     return Row(
       children: [
         PopupMenuButton<String>(
@@ -221,106 +227,4 @@ class _FridgePageState extends State<FridgePage> {
       ],
     );
   }
-}
-
-// --- 음식 목록 아이템 카드 위젯 (이전과 동일) ---
-class FoodListItemCard extends StatelessWidget {
-  final FoodItem item;
-  const FoodListItemCard({super.key, required this.item});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(16),
-        // 카드 자체에는 그림자 대신 테두리 사용 가능
-        // border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.network(
-              item.imageUrl, width: 80, height: 80, fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                  width: 80, height: 80, color: const Color(0xFFF2F2F7),
-                  child: const Icon(Icons.fastfood_outlined, color: AppColors.textSecondary)),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(item.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary)),
-                const SizedBox(height: 6),
-                Text('남은 수량   ${item.quantity}', style: const TextStyle(color: AppColors.primary, fontSize: 14)),
-                const SizedBox(height: 4),
-                Text('유통기한   ${item.expiryDate}', style: const TextStyle(color: AppColors.primary, fontSize: 14)),
-              ],
-            ),
-          ),
-          DdayTag(dDay: item.dDay),
-        ],
-      ),
-    );
-  }
-}
-
-// --- D-Day 태그 위젯 (이전과 동일) ---
-class DdayTag extends StatelessWidget {
-  final int dDay;
-  const DdayTag({super.key, required this.dDay});
-
-  @override
-  Widget build(BuildContext context) {
-    Color bgColor;
-    Color textColor;
-
-    if (dDay <= 3) {
-      bgColor = AppColors.statusDanger;
-      textColor = AppColors.white;
-    } else if (dDay <= 10) {
-      bgColor = AppColors.statusSafe;
-      textColor = AppColors.black;
-    } else {
-      bgColor = AppColors.accent;
-      textColor = AppColors.primary;
-    }
-
-    return ClipPath(
-      clipper: DdayTagClipper(),
-      child: Container(
-        width: 80,
-        height: 40,
-        color: bgColor,
-        padding: const EdgeInsets.only(left: 10),
-        alignment: Alignment.center,
-        child: Text(
-          'D-${dDay.toString()}',
-          style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-      ),
-    );
-  }
-}
-
-// --- D-Day 태그 모양을 위한 Custom Clipper (이전과 동일) ---
-class DdayTagClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    final path = Path();
-    path.moveTo(size.width, 0);
-    path.lineTo(size.width, size.height);
-    path.lineTo(0, size.height);
-    path.lineTo(0, 10);
-    path.lineTo(10, 0);
-    path.close();
-    return path;
-  }
-
-  @override
-  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
