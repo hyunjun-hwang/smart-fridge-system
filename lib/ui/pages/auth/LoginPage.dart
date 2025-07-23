@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:smart_fridge_system/constants/app_colors.dart';
-import 'package:smart_fridge_system/pages/auth/FindAuthInfoPage.dart';
-import 'package:smart_fridge_system/widgets/primary_button.dart';
-import 'package:smart_fridge_system/widgets/custom_text_field.dart';
-import 'package:smart_fridge_system/pages/auth/signup_page.dart';
-import 'package:smart_fridge_system/pages/home/mainpage.dart';
+import 'package:smart_fridge_system/ui/pages/auth/FindAuthInfoPage.dart';
+import 'package:smart_fridge_system/ui/widgets/primary_button.dart';
+import 'package:smart_fridge_system/ui/widgets/custom_text_field.dart';
+import 'package:smart_fridge_system/ui/pages/auth/signup_page.dart';
+import 'package:smart_fridge_system/ui/pages/home/mainpage.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:smart_fridge_system/constants/app_colors.dart';
-import 'package:smart_fridge_system/pages/auth/LoginPage.dart';
-import 'package:smart_fridge_system/pages/auth/signup_page.dart';
-import 'package:smart_fridge_system/widgets/primary_button.dart';
+import 'package:smart_fridge_system/ui/pages/auth/LoginPage.dart';
+import 'package:smart_fridge_system/ui/pages/auth/signup_page.dart';
+import 'package:smart_fridge_system/ui/widgets/primary_button.dart';
 
 class WelcomePage extends StatelessWidget {
   const WelcomePage({super.key});

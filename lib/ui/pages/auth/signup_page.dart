@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:smart_fridge_system/constants/app_colors.dart';
-import 'package:smart_fridge_system/widgets/custom_text_field.dart';
-import 'package:smart_fridge_system/widgets/input_field_with_button.dart';
-import 'package:smart_fridge_system/widgets/primary_button.dart';
+import 'package:smart_fridge_system/ui/widgets/custom_text_field.dart';
+import 'package:smart_fridge_system/ui/widgets/input_field_with_button.dart';
+import 'package:smart_fridge_system/ui/widgets/primary_button.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
