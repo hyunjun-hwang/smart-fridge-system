@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:smart_fridge_system/constants/app_colors.dart';
 import 'package:smart_fridge_system/pages/refrigerator/refrigerator_main.dart';
 
-// 1. StatefulWidget으로 변경
+// 1. StatefulWidget
 class BottomNav extends StatefulWidget {
   const BottomNav({super.key});
 
