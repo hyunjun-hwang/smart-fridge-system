@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:smart_fridge_system/pages/auth/WelcomePage.dart';
+import 'package:smart_fridge_system/pages/home/mainpage.dart';
 
 
 void main() async {
@@ -19,7 +20,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: const WelcomePage(),
+      home: const MainScreen(),
     );
   }
 }

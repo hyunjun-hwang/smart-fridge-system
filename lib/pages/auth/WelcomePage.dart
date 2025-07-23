@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:smart_fridge_system/constants/app_colors.dart';
 import 'package:smart_fridge_system/pages/auth/LoginPage.dart';
-import 'package:smart_fridge_system/widgets/primary_button.dart'; // 새로 만든 버튼 위젯 import
+import 'package:smart_fridge_system/pages/auth/signup_page.dart';
+import 'package:smart_fridge_system/widgets/primary_button.dart';
 
 class WelcomePage extends StatelessWidget {
   const WelcomePage({super.key});
@@ -45,7 +46,7 @@ class WelcomePage extends StatelessWidget {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const LoginPage()),
+                    MaterialPageRoute(builder: (context) => const SignUpPage()),
                   );
                 },
               ),
