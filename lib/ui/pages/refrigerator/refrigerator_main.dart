@@ -3,7 +3,7 @@ import 'package:smart_fridge_system/constants/app_colors.dart';
 import 'package:smart_fridge_system/data/models/food_item.dart';
 import 'package:smart_fridge_system/data/repositories/food_repository.dart';
 import 'package:smart_fridge_system/ui/pages/refrigerator/food_list_item_card.dart';
-import 'package:smart_fridge_system/ui/pages/refrigerator/food_item_dialog.dart'; // 사용자님이 지정해주신 경로
+import 'package:smart_fridge_system/ui/pages/refrigerator/edit_food_item_dialog.dart'; // 수정용 다이얼로그 import
 
 class FridgePage extends StatefulWidget {
   const FridgePage({super.key});
@@ -16,12 +16,12 @@ class _FridgePageState extends State<FridgePage> {
   final FoodRepository _foodRepository = FoodRepository();
   Future<List<FoodItem>>? _foodItemsFuture;
 
-  // --- 상태 변수 수정 및 초기화 ---
+  // 필터 및 정렬 상태 변수
   final List<String> categories = ['전체', '과일', '고기', '채소', '유제품'];
   String selectedCategory = '전체';
 
-  final List<String> storageOptions = ['전체', '냉장실', '냉동고']; // '전체' 추가
-  String selectedStorage = '전체'; // 기본값 '전체'로 변경
+  final List<String> storageOptions = ['전체', '냉장실', '냉동고'];
+  String selectedStorage = '전체';
 
   final List<String> sortOptions = [
     '유통기한 임박한 순', '유통기한 많이 남은순', '최근에 입고된 순', '예전에 입고된 순', '수량 많은 순', '수량 적은 순'
@@ -40,10 +40,19 @@ class _FridgePageState extends State<FridgePage> {
       color: const Color(0xFFF2F2F7),
       child: Column(
         children: [
-          // ... 필터 UI 부분은 동일 ...
           Container(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-            // ...
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  spreadRadius: 1,
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
             child: Column(
               children: [
                 _buildSearchAndFilter(),
@@ -69,17 +78,14 @@ class _FridgePageState extends State<FridgePage> {
                 // --- 필터링 및 정렬 로직 ---
                 List<FoodItem> filteredItems = snapshot.data!;
 
-                // 1. 보관 장소 필터링
                 if (selectedStorage != '전체') {
                   filteredItems = filteredItems.where((item) => item.storage.displayName == selectedStorage).toList();
                 }
 
-                // 2. 카테고리 필터링
                 if (selectedCategory != '전체') {
                   filteredItems = filteredItems.where((item) => item.category == selectedCategory).toList();
                 }
 
-                // 3. 정렬 로직
                 filteredItems.sort((a, b) {
                   switch (selectedSortOrder) {
                     case '유통기한 많이 남은순':
@@ -107,10 +113,10 @@ class _FridgePageState extends State<FridgePage> {
                   padding: const EdgeInsets.all(20),
                   itemCount: filteredItems.length,
                   itemBuilder: (context, index) {
-                    final item = filteredItems[index]; // 가공된 리스트 사용
+                    final item = filteredItems[index];
                     return FoodListItemCard(
                       item: item,
-                      onTap: () => _showFoodItemDialog(item),
+                      onTap: () => _showEditFoodDialog(item),
                     );
                   },
                   separatorBuilder: (context, index) => const SizedBox(height: 12),
@@ -123,10 +129,12 @@ class _FridgePageState extends State<FridgePage> {
     );
   }
 
-  void _showFoodItemDialog(FoodItem item) {
+  void _showEditFoodDialog(FoodItem item) {
     showDialog(
       context: context,
-      builder: (BuildContext context) => FoodItemDialog(item: item),
+      builder: (BuildContext context) {
+        return EditFoodItemDialog(item: item);
+      },
     );
   }
 
@@ -142,20 +150,17 @@ class _FridgePageState extends State<FridgePage> {
                 decoration: InputDecoration(
                   hintText: '여기에 검색하세요.',
                   hintStyle: const TextStyle(color: AppColors.textSecondary),
-                  prefixIcon:
-                  const Icon(Icons.search, color: AppColors.textSecondary),
+                  prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
                   filled: true,
                   fillColor: AppColors.white,
-                  contentPadding:
-                  const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(20),
                     borderSide: const BorderSide(color: AppColors.textSecondary),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(20),
-                    borderSide: const BorderSide(
-                        color: AppColors.textSecondary, width: 1.5),
+                    borderSide: const BorderSide(color: AppColors.textSecondary, width: 1.5),
                   ),
                 ),
               ),
