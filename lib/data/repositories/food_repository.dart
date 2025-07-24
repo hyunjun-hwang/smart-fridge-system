@@ -14,16 +14,48 @@ class FoodRepository {
     // 예: final snapshot = await FirebaseFirestore.instance.collection('foods').get();
     //     return snapshot.docs.map((doc) => FoodItem.fromFirestore(doc)).toList();
 
-    // 현재는 기존 샘플 데이터를 그대로 반환
+    // 현재는 새로운 모델 구조에 맞는 샘플 데이터를 반환
     return [
-      FoodItem(name: '사과', quantity: '6개', imageUrl: 'https://images.unsplash.com/photo-1579613832125-5d34a13ffe2a?q=80&w=2940&auto=format&fit=crop', expiryDate: '2025. 08. 22', dDay: 30),
-      FoodItem(name: '아보카도', quantity: '2개', imageUrl: 'https://images.unsplash.com/photo-1579613832125-5d34a13ffe2a?q=80&w=2940&auto=format&fit=crop', expiryDate: '2025. 08. 02', dDay: 10),
-      FoodItem(name: '소고기', quantity: '350g', imageUrl: 'https://images.unsplash.com/photo-1579613832125-5d34a13ffe2a?q=80&w=2940&auto=format&fit=crop', expiryDate: '2025. 07. 24', dDay: 1),
-      FoodItem(name: '우유', quantity: '1개', imageUrl: 'https://plus.unsplash.com/premium_photo-1663852297267-827c73e7529e?q=80&w=2940&auto=format&fit=crop', expiryDate: '2025. 07. 28', dDay: 5),
-      FoodItem(name: '사과', quantity: '6개', imageUrl: 'https://images.unsplash.com/photo-1579613832125-5d34a13ffe2a?q=80&w=2940&auto=format&fit=crop', expiryDate: '2025. 08. 22', dDay: 30),
-      FoodItem(name: '아보카도', quantity: '2개', imageUrl: 'https://images.unsplash.com/photo-1579613832125-5d34a13ffe2a?q=80&w=2940&auto=format&fit=crop', expiryDate: '2025. 08. 02', dDay: 10),
-      FoodItem(name: '소고기', quantity: '350g', imageUrl: 'https://images.unsplash.com/photo-1579613832125-5d34a13ffe2a?q=80&w=2940&auto=format&fit=crop', expiryDate: '2025. 07. 24', dDay: 1),
-      FoodItem(name: '우유', quantity: '1개', imageUrl: 'https://plus.unsplash.com/premium_photo-1663852297267-827c73e7529e?q=80&w=2940&auto=format&fit=crop', expiryDate: '2025. 07. 28', dDay: 5),
+      FoodItem(
+        name: '사과',
+        quantity: 6,
+        unit: Unit.count,
+        imageUrl: 'https://images.unsplash.com/photo-1579613832125-5d34a13ffe2a?q=80&w=2940&auto=format&fit=crop',
+        expiryDate: DateTime(2025, 8, 22),
+        stockedDate: DateTime(2025, 7, 20),
+        storage: StorageType.fridge,
+        category: '과일',
+      ),
+      FoodItem(
+        name: '아보카도',
+        quantity: 2,
+        unit: Unit.count,
+        imageUrl: 'https://images.unsplash.com/photo-1579613832125-5d34a13ffe2a?q=80&w=2940&auto=format&fit=crop',
+        expiryDate: DateTime(2025, 8, 2),
+        stockedDate: DateTime(2025, 7, 21),
+        storage: StorageType.fridge,
+        category: '과일',
+      ),
+      FoodItem(
+        name: '소고기',
+        quantity: 350,
+        unit: Unit.grams,
+        imageUrl: 'https://images.unsplash.com/photo-1579613832125-5d34a13ffe2a?q=80&w=2940&auto=format&fit=crop',
+        expiryDate: DateTime(2025, 7, 28),
+        stockedDate: DateTime(2025, 7, 22),
+        storage: StorageType.freezer,
+        category: '고기',
+      ),
+      FoodItem(
+        name: '우유',
+        quantity: 1,
+        unit: Unit.count,
+        imageUrl: 'https://plus.unsplash.com/premium_photo-1663852297267-827c73e7529e?q=80&w=2940&auto=format&fit=crop',
+        expiryDate: DateTime(2025, 8, 5),
+        stockedDate: DateTime(2025, 7, 23),
+        storage: StorageType.fridge,
+        category: '유제품',
+      ),
     ];
   }
 }
