@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:smart_fridge_system/constants/app_colors.dart';
 import 'package:smart_fridge_system/ui/pages/refrigerator/refrigerator_main.dart';
 import 'package:smart_fridge_system/ui/pages/home/mainpage.dart';
+import 'package:smart_fridge_system/ui/pages/recipe/recipe_main_page.dart';
 
 class BottomNav extends StatefulWidget {
   const BottomNav({super.key});
@@ -19,7 +20,7 @@ class _BottomNavState extends State<BottomNav> {
     HomePage(),
     FridgePage(),
     Center(child: Text('레시피 페이지')),
-    Center(child: Text('영양소 페이지')),
+    RecipeMainPage(),
     Center(child: Text('프로필 페이지')),
   ];
 
