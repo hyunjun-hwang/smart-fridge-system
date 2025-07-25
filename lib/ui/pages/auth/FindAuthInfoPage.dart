@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:smart_fridge_system/constants/app_colors.dart';
-import 'package:smart_fridge_system/widgets/input_field_with_button.dart'; // 새로 만든 위젯 import
+import 'package:smart_fridge_system/ui/widgets/input_field_with_button.dart'; // 새로 만든 위젯 import
 
 class FindAuthInfoPage extends StatelessWidget {
   const FindAuthInfoPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // 공통으로 사용할 스타일 정의
     final inputBorder = OutlineInputBorder(
       borderRadius: BorderRadius.circular(30.0),
       borderSide: const BorderSide(color: AppColors.textSecondary, width: 1.5),

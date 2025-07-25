@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:smart_fridge_system/constants/app_colors.dart';
-import 'package:smart_fridge_system/widgets/custom_text_field.dart';
-import 'package:smart_fridge_system/widgets/input_field_with_button.dart';
-import 'package:smart_fridge_system/widgets/primary_button.dart';
+import 'package:smart_fridge_system/ui/widgets/custom_text_field.dart';
+import 'package:smart_fridge_system/ui/widgets/input_field_with_button.dart';
+import 'package:smart_fridge_system/ui/widgets/primary_button.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -12,8 +12,6 @@ class SignUpPage extends StatefulWidget {
 }
 
 class _SignUpPageState extends State<SignUpPage> {
-  // 성별 선택 버튼의 상태를 관리하는 변수 (남, 여)
-  // 이미지처럼 '여'가 기본 선택되도록 설정
   final List<bool> _genderSelection = [false, true];
 
   @override
@@ -23,7 +21,6 @@ class _SignUpPageState extends State<SignUpPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        // 뒤로가기 버튼만 있는 깔끔한 앱바
         backgroundColor: Colors.white,
         elevation: 0,
         leading: const BackButton(color: Colors.black),
@@ -83,7 +80,6 @@ class _SignUpPageState extends State<SignUpPage> {
                 Row(
                   // mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // 생년월일 필드 (전체 너비의 약 60% 차지)
                     SizedBox(
                       width: screenWidth * 0.8 * 0.6,
                       child: const CustomTextField(hintText: '생년월일'),

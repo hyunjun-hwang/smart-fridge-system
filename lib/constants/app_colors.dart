@@ -12,7 +12,7 @@ class AppColors {
 
 
   // --- 텍스트 및 보조 색상 ---
-  // 강조되지 않는 보조 텍스트 색상
+  // 강조되지 않는 보조 색상
   static const Color textSecondary = Color(0xFF83A092);
   // 기타 포인트 색상
   static const Color skyBlue = Color(0xFFC4D5E7);
