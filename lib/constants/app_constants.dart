@@ -2,11 +2,10 @@
   import 'package:flutter/material.dart';
 
   // --- Colors ---
-  const kPrimaryColor = Color(0xFF003508);
-  const kAccentColor = Color(0xFFE0F2F1); // Light teal/mint color
+  const kAccentColor = Color(0xFFCBD6AB);
   const kWarningColor = Colors.red;
   const kNormalColor = Colors.blue;
-  const kTextColor = Colors.black;
+  const kTextColor = Color(0xFF003508);
   const kGreyColor = Colors.grey;
 
   // --- Dimensions ---
@@ -20,6 +19,6 @@
   const kModalBorderRadius = BorderRadius.vertical(top: Radius.circular(20));
 
   // --- Text Styles ---
-  const kTitleTextStyle = TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: kPrimaryColor);
-  const kCardTitleTextStyle = TextStyle(fontSize: 17, fontWeight: FontWeight.bold);
-  const kBodyTextStyle = TextStyle(fontSize: 15, fontWeight: FontWeight.bold);
+  const kTitleTextStyle = TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: kTextColor);
+  const kCardTitleTextStyle = TextStyle(color: kTextColor, fontSize: 17, fontWeight: FontWeight.bold);
+  const kBodyTextStyle = TextStyle(color: kTextColor, fontSize: 15, fontWeight: FontWeight.bold);
