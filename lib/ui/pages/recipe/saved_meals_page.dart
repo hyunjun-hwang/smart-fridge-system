@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '/storage/meal_storage.dart';
+import 'package:smart_fridge_system/ui/pages/recipe/meal_storage.dart';
 
 class SavedMealsPage extends StatefulWidget {
   const SavedMealsPage({super.key});

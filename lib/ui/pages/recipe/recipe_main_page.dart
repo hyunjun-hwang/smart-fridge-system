@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../widgets/recipe_card.dart';
+import 'package:smart_fridge_system/ui/pages/recipe/recipe_card.dart';
 import 'saved_meals_page.dart';
 
 class RecipeMainPage extends StatefulWidget {
