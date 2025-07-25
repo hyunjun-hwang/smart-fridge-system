@@ -1,10 +1,9 @@
-// FILE: mainpage.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:smart_fridge_system/constants/app_constants.dart';
-import 'temperature_control_modal.dart';
-import 'notification_modal.dart';
-import 'shopping_list_modal.dart';
+import 'package:smart_fridge_system/ui/pages/home/temperature_control_modal.dart';
+import 'package:smart_fridge_system/ui/pages/home/notification_modal.dart';
+import 'package:smart_fridge_system/ui/pages/home/shopping_list_modal.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -170,11 +169,21 @@ class _HomePageState extends State<HomePage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              border: Border.all(color: isWarning ? kWarningColor : kNormalColor),
+              border: Border.all(
+                color: isWarning ? kWarningColor : kNormalColor,
+              ),
               borderRadius: BorderRadius.circular(30),
             ),
-            child: Text(value, style: TextStyle(color: isWarning ? kWarningColor : kTextColor, fontWeight: FontWeight.bold)),
+            child: Text(
+              value,
+              style: TextStyle(
+                color: isWarning ? kWarningColor : kTextColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
           ),
+
         ],
       ),
     );
@@ -219,6 +228,16 @@ class _HomePageState extends State<HomePage> {
                     minimumSize: const Size(100, 36),
                   ),
                   child: const Text('냉장고 확인하기'),
+                ),
+                ElevatedButton(
+                  onPressed: () {},
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.lightGreen[100],
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    minimumSize: const Size(100, 36),
+                  ),
+                  child: const Text('추천요리'),
                 ),
               ],
             ),
@@ -341,7 +360,7 @@ class _HomePageState extends State<HomePage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: isScrollControlled,
-      shape: const RoundedRectangleBorder(borderRadius: kModalBorderRadius),
+      // shape: const RoundedRectangleBorder(borderRadius: kModalBorderRadius),
       builder: (_) => modalContent,
     );
   }
