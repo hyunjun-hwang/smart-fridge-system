@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import 'package:provider/provider.dart';
 
@@ -7,15 +8,36 @@ import 'package:smart_fridge_system/providers/daily_nutrition_provider.dart';
 import 'package:smart_fridge_system/ui/pages/nutrition/full_nutrition_screen.dart';
 import 'package:smart_fridge_system/ui/pages/nutrition/record_entry_screen.dart';
 
-class NutritionScreen extends StatefulWidget {
+class NutritionScreen extends StatelessWidget {
   const NutritionScreen({super.key});
 
   @override
-  State<NutritionScreen> createState() => _NutritionScreenState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => DailyNutritionProvider(),
+      child: const _NutritionContent(),
+    );
+  }
 }
 
-class _NutritionScreenState extends State<NutritionScreen> {
+class _NutritionContent extends StatefulWidget {
+  const _NutritionContent({super.key});
+
+  @override
+  State<_NutritionContent> createState() => _NutritionContentState();
+}
+
+class _NutritionContentState extends State<_NutritionContent> {
   bool _isFullView = false;
+
+  static const Color _textColor = Color(0xFF003508);
+  static const Color _borderColor = Color(0xFFC7D8A4);
+
+  @override
+  void initState() {
+    super.initState();
+    initializeDateFormatting('ko_KR', null);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,13 +50,13 @@ class _NutritionScreenState extends State<NutritionScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('영양소', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+        title: const Text('영양소', style: TextStyle(color: _textColor, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_none, color: Colors.grey),
+            icon: const Icon(Icons.notifications_none, color: _textColor),
             onPressed: () {},
           ),
         ],
@@ -46,19 +68,15 @@ class _NutritionScreenState extends State<NutritionScreen> {
             child: Row(
               children: [
                 Expanded(
-                  child: _buildSegmentButton(
-                    label: '기록하기',
-                    selected: !_isFullView,
-                    onTap: () => setState(() => _isFullView = false),
-                  ),
+                  child: _buildSegmentButton('기록하기', !_isFullView, () {
+                    setState(() => _isFullView = false);
+                  }),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: _buildSegmentButton(
-                    label: '전체보기',
-                    selected: _isFullView,
-                    onTap: () => setState(() => _isFullView = true),
-                  ),
+                  child: _buildSegmentButton('전체보기', _isFullView, () {
+                    setState(() => _isFullView = true);
+                  }),
                 ),
               ],
             ),
@@ -75,45 +93,25 @@ class _NutritionScreenState extends State<NutritionScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: '홈'),
-          BottomNavigationBarItem(icon: Icon(Icons.kitchen), label: '냉장고'),
-          BottomNavigationBarItem(icon: Icon(Icons.restaurant), label: '레시피'),
-          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: '영양소'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: '프로필'),
-        ],
-        currentIndex: 3,
-        selectedItemColor: Colors.green,
-        unselectedItemColor: Colors.grey,
-        type: BottomNavigationBarType.fixed,
-        onTap: (index) {
-          // TODO: 탭 이동 처리
-        },
-      ),
     );
   }
 
-  Widget _buildSegmentButton({
-    required String label,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildSegmentButton(String label, bool selected, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         height: 36,
         decoration: BoxDecoration(
-          color: selected ? Colors.green : Colors.white,
-          border: Border.all(color: Colors.green),
-          borderRadius: BorderRadius.circular(8),
+          color: selected ? _borderColor : Colors.white,
+          border: Border.all(color: _borderColor),
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Center(
           child: Text(
             label,
             style: TextStyle(
-              color: selected ? Colors.white : Colors.green,
-              fontWeight: FontWeight.w500,
+              color: selected ? _textColor : _textColor.withOpacity(0.6),
+              fontWeight: FontWeight.bold,
             ),
           ),
         ),
@@ -126,17 +124,17 @@ class _NutritionScreenState extends State<NutritionScreen> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         IconButton(
-          icon: const Icon(Icons.chevron_left),
+          icon: const Icon(Icons.chevron_left, color: _textColor),
           onPressed: () {
             provider.setSelectedDate(provider.selectedDate.subtract(const Duration(days: 1)));
           },
         ),
         Text(
           DateFormat('M월 d일 (E)', 'ko_KR').format(provider.selectedDate),
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _textColor),
         ),
         IconButton(
-          icon: const Icon(Icons.chevron_right),
+          icon: const Icon(Icons.chevron_right, color: _textColor),
           onPressed: () {
             provider.setSelectedDate(provider.selectedDate.add(const Duration(days: 1)));
           },
@@ -153,14 +151,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
       double targetCal,
       double progress,
       ) {
-    const meals = [
-      '아침',
-      '점심',
-      '저녁',
-      '아침간식',
-      '점심간식',
-      '저녁간식',
-    ];
+    const meals = ['아침', '점심', '저녁', '아침간식', '점심간식', '저녁간식'];
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -174,21 +165,22 @@ class _NutritionScreenState extends State<NutritionScreen> {
             center: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('${consumed.toInt()}kcal', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                Text('${consumed.toInt()}kcal',
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: _textColor)),
                 GestureDetector(
                   onTap: () => _showTargetInputDialog(context),
                   child: Text(
                     '/ ${targetCal.toInt()}kcal',
                     style: const TextStyle(
                       fontSize: 14,
-                      color: Colors.grey,
+                      color: _textColor,
                       decoration: TextDecoration.underline,
                     ),
                   ),
                 ),
               ],
             ),
-            progressColor: Colors.green,
+            progressColor: _borderColor,
             backgroundColor: Colors.grey.shade200,
             circularStrokeCap: CircularStrokeCap.round,
           ),
@@ -196,9 +188,9 @@ class _NutritionScreenState extends State<NutritionScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              Text('탄수화물: ${current["탄수화물"] ?? 0}g'),
-              Text('단백질: ${current["단백질"] ?? 0}g'),
-              Text('지방: ${current["지방"] ?? 0}g'),
+              Text('탄수화물: ${current["탄수화물"] ?? 0}g', style: TextStyle(color: _textColor)),
+              Text('단백질: ${current["단백질"] ?? 0}g', style: TextStyle(color: _textColor)),
+              Text('지방: ${current["지방"] ?? 0}g', style: TextStyle(color: _textColor)),
             ],
           ),
           const SizedBox(height: 24),
@@ -226,34 +218,35 @@ class _NutritionScreenState extends State<NutritionScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: const Color(0xFFEFF7EF),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('목표 칼로리 설정', style: TextStyle(fontWeight: FontWeight.bold)),
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('목표 칼로리 설정', style: TextStyle(color: _textColor, fontWeight: FontWeight.bold)),
           content: TextField(
             controller: controller,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
+            style: const TextStyle(color: _textColor),
+            decoration: InputDecoration(
               hintText: '예: 1800',
-              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.green)),
-              focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.green, width: 2)),
+              hintStyle: const TextStyle(color: Colors.grey),
+              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: _borderColor)),
+              focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: _borderColor, width: 2)),
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('취소', style: TextStyle(color: Colors.green)),
+              child: const Text('취소', style: TextStyle(color: _textColor)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                backgroundColor: _borderColor,
+                foregroundColor: _textColor,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               ),
               onPressed: () {
                 final newTarget = double.tryParse(controller.text);
                 if (newTarget != null && newTarget > 0) {
-                  Provider.of<DailyNutritionProvider>(context, listen: false)
-                      .setTargetCalories(newTarget);
+                  Provider.of<DailyNutritionProvider>(context, listen: false).setTargetCalories(newTarget);
                 }
                 Navigator.of(context).pop();
               },
@@ -278,6 +271,9 @@ class _MealCard extends StatelessWidget {
     Key? key,
   }) : super(key: key);
 
+  static const Color _textColor = Color(0xFF003508);
+  static const Color _borderColor = Color(0xFFC7D8A4);
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -297,14 +293,15 @@ class _MealCard extends StatelessWidget {
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: Colors.grey[100],
+          border: Border.all(color: _borderColor),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(label, style: const TextStyle(fontSize: 14)),
+            Text(label, style: const TextStyle(fontSize: 14, color: _textColor)),
             const SizedBox(height: 6),
-            Text('${kcal}kcal', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+            Text('${kcal}kcal', style: const TextStyle(color: _textColor, fontWeight: FontWeight.bold)),
           ],
         ),
       ),

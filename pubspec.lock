@@ -122,7 +122,7 @@ packages:
     source: hosted
     version: "2.24.1"
   firebase_database:
-    dependency: "direct dev"
+    dependency: "direct main"
     description:
       name: firebase_database
       sha256: "8f3b44a1217ca4553c62eaaae4269fccb7d3e25116c8f8cf86ddac98213df6ca"
@@ -149,10 +149,10 @@ packages:
     dependency: "direct main"
     description:
       name: fl_chart
-      sha256: "155556c4aba56c8474308d51b4e5446b80a07db9ab66a3cb74aff05c110df982"
+      sha256: "5a74434cc83bf64346efb562f1a06eefaf1bcb530dc3d96a104f631a1eff8d79"
       url: "https://pub.dev"
     source: hosted
-    version: "0.60.0"
+    version: "0.65.0"
   flutter:
     dependency: "direct main"
     description: flutter
@@ -171,7 +171,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-
   flutter_svg:
     dependency: "direct main"
     description:
@@ -286,16 +285,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.9.1"
-
-  percent_indicator:
-    dependency: "direct main"
-    description:
-      name: percent_indicator
-      sha256: "157d29133bbc6ecb11f923d36e7960a96a3f28837549a20b65e5135729f0f9fd"
-      url: "https://pub.dev"
-    source: hosted
-    version: "4.2.5"
-
   path_parsing:
     dependency: transitive
     description:
@@ -328,6 +317,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.3.0"
+  percent_indicator:
+    dependency: "direct main"
+    description:
+      name: percent_indicator
+      sha256: "157d29133bbc6ecb11f923d36e7960a96a3f28837549a20b65e5135729f0f9fd"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.2.5"
   petitparser:
     dependency: transitive
     description:
@@ -416,8 +413,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.4.1"
-
-
   sky_engine:
     dependency: transitive
     description: flutter
