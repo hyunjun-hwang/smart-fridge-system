@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:smart_fridge_system/constants/app_colors.dart';
+import 'package:smart_fridge_system/data/models/food_item.dart'; // FoodItem 모델 사용을 위해 추가
 import 'package:smart_fridge_system/ui/pages/refrigerator/refrigerator_main.dart';
+import 'package:smart_fridge_system/ui/pages/refrigerator/add_food_item_dialog.dart'; 
 import 'package:smart_fridge_system/ui/pages/home/mainpage.dart';
 import 'package:smart_fridge_system/ui/pages/recipe/recipe_main_page.dart';
 
@@ -13,7 +15,6 @@ class BottomNav extends StatefulWidget {
 
 class _BottomNavState extends State<BottomNav> {
   int _selectedIndex = 0;
-  // --- 1. 스피드 다이얼 메뉴의 노출 상태를 관리하는 변수 추가 ---
   bool _isMenuOpen = false;
 
   static const List<Widget> _widgetOptions = <Widget>[
@@ -25,7 +26,6 @@ class _BottomNavState extends State<BottomNav> {
   ];
 
   void _onItemTapped(int index) {
-    // 다른 탭으로 이동 시 메뉴가 열려있으면 닫기
     if (_isMenuOpen) {
       setState(() {
         _isMenuOpen = false;
@@ -36,11 +36,30 @@ class _BottomNavState extends State<BottomNav> {
     });
   }
 
-  // --- 2. 플로팅 버튼 클릭 시 메뉴를 토글하는 함수 ---
   void _toggleMenu() {
     setState(() {
       _isMenuOpen = !_isMenuOpen;
     });
+  }
+
+  // --- [새로 추가] '음식 추가' 다이얼로그를 띄우는 함수 ---
+  void _showAddFoodDialog() async {
+    // 스피드 다이얼 메뉴를 먼저 닫습니다.
+    _toggleMenu();
+
+    // 다이얼로그를 띄우고, 결과가 반환될 때까지 기다립니다.
+    final newFoodItem = await showDialog<FoodItem>(
+      context: context,
+      builder: (context) {
+        return const AddFoodItemDialog();
+      },
+    );
+
+    // 사용자가 '추가' 버튼을 눌러 새 아이템이 반환되었을 경우
+    if (newFoodItem != null) {
+      // TODO: 반환된 newFoodItem을 Firebase에 저장하고, FridgePage 목록을 새로고침하는 로직 필요
+      print('새로운 음식 추가됨: ${newFoodItem.name}');
+    }
   }
 
   @override
@@ -63,23 +82,19 @@ class _BottomNavState extends State<BottomNav> {
         ],
       )
           : null,
-      // --- 3. Stack을 사용해 기존 화면 위에 메뉴를 띄울 수 있도록 구조 변경 ---
       body: Stack(
         children: [
           _widgetOptions.elementAt(_selectedIndex),
-          // 메뉴가 열렸을 때만 표시
           if (_isMenuOpen)
-          // 뒷 배경을 눌러도 메뉴가 닫히도록 GestureDetector 추가
             GestureDetector(
-              onTap: _toggleMenu, // 어두운 배경 클릭 시 메뉴 닫기
+              onTap: _toggleMenu,
               child: Container(
                 color: Colors.black.withOpacity(0.4),
               ),
             ),
           if (_isMenuOpen)
-          // --- 4. 요청하신 디자인의 커스텀 메뉴 위젯 ---
             Positioned(
-              bottom: 90, // FAB 위치에 맞게 조정
+              bottom: 90,
               right: 20,
               child: _buildSpeedDialMenu(),
             ),
@@ -87,10 +102,10 @@ class _BottomNavState extends State<BottomNav> {
       ),
       floatingActionButton: _selectedIndex == 1
           ? FloatingActionButton(
-        onPressed: _toggleMenu, // 이제 메뉴를 토글하는 함수 호출
+        onPressed: _toggleMenu,
         backgroundColor: AppColors.accent,
         child: Icon(
-          _isMenuOpen ? Icons.close : Icons.add, // 메뉴 상태에 따라 아이콘 변경
+          _isMenuOpen ? Icons.close : Icons.add,
           color: AppColors.primary,
           size: 30,
         ),
@@ -134,25 +149,22 @@ class _BottomNavState extends State<BottomNav> {
     );
   }
 
-  // --- 5. 스피드 다이얼 메뉴를 그리는 별도 함수 ---
   Widget _buildSpeedDialMenu() {
     return Container(
       width: 200,
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: Colors.white,
         border: Border.all(color: AppColors.accent, width: 2),
         borderRadius: BorderRadius.circular(25),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // --- [수정] onTap에 새로 만든 함수 연결 ---
           _buildMenuOption(
             text: '직접 추가하기',
             iconPath: 'assets/images/finger.png',
-            onTap: () {
-              print('직접 추가하기 선택');
-              _toggleMenu();
-            },
+            onTap: _showAddFoodDialog,
           ),
           const Divider(height: 1, color: AppColors.accent),
           _buildMenuOption(
@@ -168,7 +180,6 @@ class _BottomNavState extends State<BottomNav> {
     );
   }
 
-  // 메뉴 옵션을 만드는 helper 함수
   Widget _buildMenuOption({
     required String text,
     required String iconPath,
