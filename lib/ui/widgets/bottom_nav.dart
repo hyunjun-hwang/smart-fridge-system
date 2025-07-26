@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:smart_fridge_system/constants/app_colors.dart';
 import 'package:smart_fridge_system/data/models/food_item.dart'; // FoodItem 모델 사용을 위해 추가
 import 'package:smart_fridge_system/ui/pages/refrigerator/refrigerator_main.dart';
-import 'package:smart_fridge_system/ui/pages/refrigerator/add_food_item_dialog.dart'; // 새로 추가된 import
+import 'package:smart_fridge_system/ui/pages/refrigerator/add_food_item_dialog.dart'; 
+import 'package:smart_fridge_system/ui/pages/home/mainpage.dart';
+import 'package:smart_fridge_system/ui/pages/recipe/recipe_main_page.dart';
 
 class BottomNav extends StatefulWidget {
   const BottomNav({super.key});
@@ -16,10 +18,10 @@ class _BottomNavState extends State<BottomNav> {
   bool _isMenuOpen = false;
 
   static const List<Widget> _widgetOptions = <Widget>[
-    Center(child: Text('홈 페이지')),
+    HomePage(),
     FridgePage(),
     Center(child: Text('레시피 페이지')),
-    Center(child: Text('영양소 페이지')),
+    RecipeMainPage(),
     Center(child: Text('프로필 페이지')),
   ];
 
