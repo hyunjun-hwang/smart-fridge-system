@@ -1,10 +1,9 @@
-// FILE: mainpage.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:smart_fridge_system/constants/app_constants.dart';
-import 'temperature_control_modal.dart';
-import 'notification_modal.dart';
-import 'shopping_list_modal.dart';
+import 'package:smart_fridge_system/ui/pages/home/temperature_control_modal.dart';
+import 'package:smart_fridge_system/ui/pages/home/notification_modal.dart';
+import 'package:smart_fridge_system/ui/pages/home/shopping_list_modal.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -69,7 +68,7 @@ class _HomePageState extends State<HomePage> {
       children: [
         const Text('안녕하세요! 좋은 아침이에요.', style: kTitleTextStyle),
         IconButton(
-          icon: const Icon(Icons.notifications_none, color: kPrimaryColor),
+          icon: const Icon(Icons.notifications_none, color: kTextColor),
           onPressed: () => _showAppModal(context, const NotificationModal()),
         ),
       ],
@@ -122,7 +121,7 @@ class _HomePageState extends State<HomePage> {
                 initialHumidity: _fridgeHumidity,
                 onTempChanged: (val) => setState(() => _fridgeTemp = val),
                 onHumidityChanged: (val) => setState(() => _fridgeHumidity = val),
-                extraContent: const Text("가스 상태: 정상", style: TextStyle(color: Colors.green)),
+                extraContent: const Text("가스 상태: 정상", style: kCardTitleTextStyle),
               ),
             ),
             child: _buildFridgeCard(
@@ -170,11 +169,21 @@ class _HomePageState extends State<HomePage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              border: Border.all(color: isWarning ? kWarningColor : kNormalColor),
+              border: Border.all(
+                color: isWarning ? kWarningColor : kNormalColor,
+              ),
               borderRadius: BorderRadius.circular(30),
             ),
-            child: Text(value, style: TextStyle(color: isWarning ? kWarningColor : kTextColor, fontWeight: FontWeight.bold)),
+            child: Text(
+              value,
+              style: TextStyle(
+                color: isWarning ? kWarningColor : kTextColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
           ),
+
         ],
       ),
     );
@@ -205,20 +214,38 @@ class _HomePageState extends State<HomePage> {
                   alignment: Alignment.center,
                   child: const Text('유통기한 임박 식품', style: kCardTitleTextStyle),
                 ),
-                const SizedBox(height: kItemSpacing),
+                const SizedBox(height: 15),
                 _expiringFoodItem('마늘', 'D-100'),
                 const SizedBox(height: 8),
                 _expiringFoodItem('상추', 'D-3'),
-                const SizedBox(height: 8),
-                ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.lightGreen[100],
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    minimumSize: const Size(100, 36),
-                  ),
-                  child: const Text('냉장고 확인하기'),
+                const SizedBox(height: 20),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () {},
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFC5D6A3),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap, // 터치 영역 축소
+                      ),
+                      child: const Text('냉장고 확인하기', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                    ),
+                    const SizedBox(height: 8), // 간격 조절
+                    ElevatedButton(
+                      onPressed: () {},
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFC5D6A3),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap, // 터치 영역 축소
+                      ),
+                      child: const Text('추천요리', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -227,6 +254,7 @@ class _HomePageState extends State<HomePage> {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 6),
@@ -238,7 +266,7 @@ class _HomePageState extends State<HomePage> {
                   alignment: Alignment.center,
                   child: const Text('장보기 목록', style: kCardTitleTextStyle),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 10),
                 _shoppingItem('복숭아', checked: true),
                 _shoppingItem('옥수수'),
                 _shoppingItem('...'),
@@ -260,26 +288,35 @@ class _HomePageState extends State<HomePage> {
         Text(name, style: kBodyTextStyle),
         const SizedBox(width: 8),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           decoration: BoxDecoration(
             border: Border.all(color: kWarningColor),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Text('D-3', style: TextStyle(color: kWarningColor)),
+          child: Text(dDay, style: const TextStyle(color: kWarningColor)),
         ),
       ],
     );
   }
 
   Widget _shoppingItem(String name, {bool checked = false}) {
-    return CheckboxListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(name, style: kBodyTextStyle),
-      value: checked,
-      onChanged: (val) {},
-      controlAffinity: ListTileControlAffinity.leading,
-      dense: true,
-      visualDensity: const VisualDensity(vertical: -4),
+    return Row(
+      children: [
+        Transform.scale(
+          scale: 0.8, // 체크박스 크기 조절
+          child: Checkbox(
+            value: checked,
+            onChanged: (val) {},
+            activeColor: Colors.blue[100], // 체크 표시 색상
+            side: MaterialStateBorderSide.resolveWith( // 체크박스 테두리 색상 (연하게)
+                  (states) => BorderSide(width: 1.0, color: Colors.grey[400]!),
+            ),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap, // 터치 영역 축소
+          ),
+        ),
+        const SizedBox(width: 0), // 체크박스와 글자의 간격 조절
+        Text(name, style: kBodyTextStyle),
+      ],
     );
   }
 
@@ -296,8 +333,8 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
-                Text('나의 섭취 내역', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                SizedBox(height: 12),
+                Text('나의 섭취 내역', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+                SizedBox(height: 15),
                 Text('총 섭취 칼로리'),
                 SizedBox(height: 4),
                 Text('1,000kcal / 1,800kcal', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
@@ -315,18 +352,23 @@ class _HomePageState extends State<HomePage> {
                   height: 70,
                   child: CircularProgressIndicator(
                     value: 1000 / 1800,
-                    color: Colors.lightBlue,
+                    color: Colors.blue[100],
                     backgroundColor: Colors.grey[300],
-                    strokeWidth: 6,
+                    strokeWidth: 15,
                   ),
                 ),
-                Container(
-                  decoration: BoxDecoration(
-                    color: kAccentColor,
-                    borderRadius: BorderRadius.circular(4),
+                ElevatedButton(
+                  onPressed: () {},
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFFC5D6A3),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    minimumSize: const Size(100, 36),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12), // 원하는 반경 값 (예: 10)
+                    ),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  child: const Text('자세히 보기', style: TextStyle(fontSize: 12)),
+                  child: const Text('자세히 보기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -341,7 +383,7 @@ class _HomePageState extends State<HomePage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: isScrollControlled,
-      shape: const RoundedRectangleBorder(borderRadius: kModalBorderRadius),
+      // shape: const RoundedRectangleBorder(borderRadius: kModalBorderRadius),
       builder: (_) => modalContent,
     );
   }
