@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_fridge_system/providers/daily_nutrition_provider.dart';
-import 'package:smart_fridge_system/ui/pages/nutrition/record_entry_screen.dart';
-import 'package:smart_fridge_system/ui/pages/nutrition/nutrition_screen.dart';
 
 class FullNutritionScreen extends StatefulWidget {
   final Map<String, dynamic> current;
@@ -28,27 +26,27 @@ class _FullNutritionScreenState extends State<FullNutritionScreen> {
   static const Color _accentColor = Color(0xFFC7D8A4);
 
   final Map<String, Map<String, double>> _weeklyAvg = {
-    '3주 전': {'calories': 1720, 'carbs': 230, 'protein': 90, 'fat': 60},
-    '2주 전': {'calories': 1800, 'carbs': 240, 'protein': 95, 'fat': 65},
-    '1주 전': {'calories': 1650, 'carbs': 220, 'protein': 85, 'fat': 55},
-    '이번 주': {'calories': 1750, 'carbs': 210, 'protein': 100, 'fat': 70},
+    '3주 전': {'calories': 1720},
+    '2주 전': {'calories': 1800},
+    '1주 전': {'calories': 1650},
+    '이번 주': {'calories': 1750},
   };
 
   final Map<String, Map<String, double>> _monthlyAvg = {
-    '5월': {'calories': 1850, 'carbs': 250, 'protein': 92, 'fat': 68},
-    '6월': {'calories': 1780, 'carbs': 240, 'protein': 88, 'fat': 60},
-    '7월': {'calories': 1900, 'carbs': 260, 'protein': 96, 'fat': 70},
+    '5월': {'calories': 1850},
+    '6월': {'calories': 1780},
+    '7월': {'calories': 1900},
   };
 
   @override
   Widget build(BuildContext context) {
+    const meals = ['아침', '점심', '저녁', '아침간식', '점심간식', '저녁간식'];
+
     final periodLabel = {
       PeriodType.daily: '일별',
       PeriodType.weekly: '주별',
       PeriodType.monthly: '월별',
     }[_period]!;
-
-    const meals = ['아침', '점심', '저녁', '아침간식', '점심간식', '저녁간식'];
 
     return SingleChildScrollView(
       child: Padding(
@@ -79,18 +77,14 @@ class _FullNutritionScreenState extends State<FullNutritionScreen> {
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: SizedBox(
-                height: 220,
-                child: _period == PeriodType.daily
-                    ? _buildDailyNutritionBars(widget.current)
-                    : BarChart(_buildGroupedBarData(
-                    _period == PeriodType.weekly ? _weeklyAvg : _monthlyAvg)),
-              ),
+              child: SizedBox(height: 220, child: _buildChartByPeriod()),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text('${widget.consumed.toInt()}kcal / ${widget.targetCal.toInt()}kcal',
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: _textColor)),
+              child: Text(
+                '${widget.consumed.toInt()}kcal / ${widget.targetCal.toInt()}kcal',
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: _textColor),
+              ),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -99,9 +93,9 @@ class _FullNutritionScreenState extends State<FullNutritionScreen> {
                 physics: const NeverScrollableScrollPhysics(),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 3,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 1.0,
+                  crossAxisSpacing: 20,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 1.3,
                 ),
                 itemCount: meals.length,
                 itemBuilder: (_, idx) => _MealCard(
@@ -110,27 +104,101 @@ class _FullNutritionScreenState extends State<FullNutritionScreen> {
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _accentColor,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const NutritionScreen()),
-                    );
-                  },
-                  child: const Text('식사 추가', style: TextStyle(color: _textColor, fontSize: 16)),
-                ),
-              ),
-            ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildChartByPeriod() {
+    switch (_period) {
+      case PeriodType.daily:
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildDailyCalorieBar(widget.consumed, widget.targetCal),
+            const SizedBox(height: 16),
+            _buildDailyNutritionBars(widget.current),
+          ],
+        );
+      case PeriodType.weekly:
+        return _buildBarChart(_weeklyAvg);
+      case PeriodType.monthly:
+        return _buildBarChart(_monthlyAvg);
+    }
+  }
+
+  Widget _buildBarChart(Map<String, Map<String, double>> data) {
+    final keys = data.keys.toList();
+
+    return BarChart(
+      BarChartData(
+        maxY: 2500,
+        barTouchData: BarTouchData(enabled: false),
+        titlesData: FlTitlesData(
+          leftTitles: AxisTitles(
+            axisNameWidget: const Text('kcal'),
+            axisNameSize: 28,
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 40,
+              getTitlesWidget: (value, meta) {
+                return Text(
+                  value.toInt().toString(),
+                  style: const TextStyle(fontSize: 10, color: _textColor),
+                  textAlign: TextAlign.center,
+                );
+              },
+            ),
+          ),
+          bottomTitles: AxisTitles(
+            axisNameWidget: const Text('기간'),
+            axisNameSize: 28,
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 36,
+              getTitlesWidget: (value, meta) {
+                if (value.toInt() >= keys.length) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(keys[value.toInt()], style: const TextStyle(fontSize: 10)),
+                );
+              },
+            ),
+          ),
+          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        ),
+        barGroups: List.generate(keys.length, (index) {
+          final kcal = data[keys[index]]!['calories']!;
+          return BarChartGroupData(x: index, barRods: [
+            BarChartRodData(toY: kcal, width: 20, color: _accentColor),
+          ]);
+        }),
+        gridData: FlGridData(show: false),
+        borderData: FlBorderData(show: false),
+      ),
+    );
+  }
+
+  Widget _buildDailyCalorieBar(double consumed, double target) {
+    final ratio = target > 0 ? (consumed / target).clamp(0.0, 1.0) : 0.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('칼로리 섭취량', style: TextStyle(color: _textColor)),
+        const SizedBox(height: 8),
+        LinearProgressIndicator(
+          value: ratio,
+          color: _accentColor,
+          backgroundColor: Colors.grey.shade200,
+          minHeight: 18,
+        ),
+        const SizedBox(height: 8),
+        Text('${consumed.toInt()} / ${target.toInt()} kcal',
+            style: const TextStyle(color: _textColor, fontWeight: FontWeight.bold)),
+      ],
     );
   }
 
@@ -168,47 +236,6 @@ class _FullNutritionScreenState extends State<FullNutritionScreen> {
         const SizedBox(width: 8),
         Text('${value.toStringAsFixed(1)}g', style: const TextStyle(color: _textColor)),
       ],
-    );
-  }
-
-  BarChartData _buildGroupedBarData(Map<String, Map<String, double>> data) {
-    final nutrients = ['calories', 'carbs', 'protein', 'fat'];
-    final colors = [Colors.redAccent, Colors.orange, Colors.green, Colors.blue];
-    final barGroups = <BarChartGroupData>[];
-
-    int index = 0;
-    for (final entry in data.entries) {
-      final rods = List.generate(nutrients.length, (i) {
-        return BarChartRodData(
-          toY: entry.value[nutrients[i]] ?? 0,
-          width: 7,
-          color: colors[i],
-          borderRadius: BorderRadius.circular(2),
-        );
-      });
-      barGroups.add(BarChartGroupData(x: index++, barRods: rods, barsSpace: 4));
-    }
-
-    return BarChartData(
-      barGroups: barGroups,
-      titlesData: FlTitlesData(
-        leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 40)),
-        bottomTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            getTitlesWidget: (value, _) {
-              final keys = data.keys.toList();
-              return Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(keys[value.toInt()], style: const TextStyle(fontSize: 10, color: _textColor)),
-              );
-            },
-
-          ),
-        ),
-      ),
-      gridData: FlGridData(show: false),
-      borderData: FlBorderData(show: false),
     );
   }
 

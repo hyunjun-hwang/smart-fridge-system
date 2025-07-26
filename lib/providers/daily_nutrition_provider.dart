@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:smart_fridge_system/providers/ndata/foodn_item.dart';
 
 class DailyNutritionProvider with ChangeNotifier {
   double _targetCalories = 1800;
 
-  Map<DateTime, Map<String, double>> _dailyNutritions = {
-    DateTime(2025, 7, 11): {
-      'calories': 1000,
-      'carbohydrates': 27,
-      'protein': 27,
-      'fat': 27,
-    },
-  };
+  // 날짜별 총 영양소 저장
+  final Map<DateTime, Map<String, double>> _dailyNutritions = {};
+
+  // 날짜별 식사별 음식 리스트
+  final Map<DateTime, Map<String, List<FoodItem>>> _mealFoods = {};
 
   DateTime _selectedDate = DateTime.now();
 
@@ -19,8 +17,9 @@ class DailyNutritionProvider with ChangeNotifier {
   Map<DateTime, Map<String, double>> get dailyNutritions => _dailyNutritions;
   DateTime get selectedDate => _selectedDate;
 
+  // 현재 날짜의 총 섭취 영양소
   Map<String, double> get currentDayNutrition {
-    final keyDate = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+    final keyDate = _normalizeDate(_selectedDate);
     return _dailyNutritions[keyDate] ?? {
       'calories': 0,
       'carbohydrates': 0,
@@ -35,46 +34,98 @@ class DailyNutritionProvider with ChangeNotifier {
   }
 
   void setSelectedDate(DateTime date) {
-    _selectedDate = DateTime(date.year, date.month, date.day);
+    _selectedDate = _normalizeDate(date);
     notifyListeners();
   }
 
-  void addNutrition(
-      DateTime date,
-      String mealType,
-      String foodName, {
-        double? calories,
-        double? carbohydrates,
-        double? protein,
-        double? fat,
-      }) {
-    final keyDate = DateTime(date.year, date.month, date.day);
+  void addFoodItem(DateTime date, String mealType, FoodItem item) {
+    final keyDate = _normalizeDate(date);
 
-    _dailyNutritions.putIfAbsent(keyDate, () => {
-      'calories': 0,
-      'carbohydrates': 0,
-      'protein': 0,
-      'fat': 0,
+    _mealFoods.putIfAbsent(keyDate, () => {});
+    _mealFoods[keyDate]!.putIfAbsent(mealType, () => []);
+    _mealFoods[keyDate]![mealType]!.add(item);
+
+    _recalculateDayNutrition(keyDate);
+    notifyListeners();
+  }
+
+  void updateFoodCount(String mealType, DateTime date, String foodName, double newCount) {
+    final keyDate = _normalizeDate(date);
+    final foodList = _mealFoods[keyDate]?[mealType];
+    if (foodList == null) return;
+
+    final index = foodList.indexWhere((item) => item.name == foodName);
+    if (index == -1) return;
+
+    final oldItem = foodList[index];
+
+    // 수량이 0이면 삭제
+    if (newCount <= 0) {
+      foodList.removeAt(index);
+    } else {
+      foodList[index] = oldItem.copyWith(count: newCount);
+    }
+
+    _recalculateDayNutrition(keyDate);
+    notifyListeners();
+  }
+
+  void removeFoodItem(String mealType, DateTime date, String foodName) {
+    final keyDate = _normalizeDate(date);
+    final foodList = _mealFoods[keyDate]?[mealType];
+    if (foodList == null) return;
+
+    foodList.removeWhere((item) => item.name == foodName);
+
+    _recalculateDayNutrition(keyDate);
+    notifyListeners();
+  }
+
+  // 해당 날짜의 총 영양소 재계산
+  void _recalculateDayNutrition(DateTime keyDate) {
+    double totalCalories = 0, carbs = 0, protein = 0, fat = 0;
+
+    _mealFoods[keyDate]?.forEach((_, List<FoodItem> mealFoods) {
+      for (final FoodItem item in mealFoods) {
+        totalCalories += item.calories * item.count;
+        carbs += item.carbohydrates * item.count;
+        protein += item.protein * item.count;
+        fat += item.fat * item.count;
+      }
     });
 
-    if (calories != null) {
-      _dailyNutritions[keyDate]!['calories'] =
-          (_dailyNutritions[keyDate]!['calories'] ?? 0) + calories;
-    }
-    if (carbohydrates != null) {
-      _dailyNutritions[keyDate]!['carbohydrates'] =
-          (_dailyNutritions[keyDate]!['carbohydrates'] ?? 0) + carbohydrates;
-    }
-    if (protein != null) {
-      _dailyNutritions[keyDate]!['protein'] =
-          (_dailyNutritions[keyDate]!['protein'] ?? 0) + protein;
-    }
-    if (fat != null) {
-      _dailyNutritions[keyDate]!['fat'] =
-          (_dailyNutritions[keyDate]!['fat'] ?? 0) + fat;
+    _dailyNutritions[keyDate] = {
+      'calories': totalCalories,
+      'carbohydrates': carbs,
+      'protein': protein,
+      'fat': fat,
+    };
+  }
+
+  Map<String, double> getMealNutrition(String meal, DateTime date) {
+    final keyDate = _normalizeDate(date);
+    final foods = _mealFoods[keyDate]?[meal] ?? [];
+
+    double calories = 0, carbs = 0, protein = 0, fat = 0;
+
+    for (final food in foods) {
+      calories += food.calories * food.count;
+      carbs += food.carbohydrates * food.count;
+      protein += food.protein * food.count;
+      fat += food.fat * food.count;
     }
 
-    notifyListeners();
+    return {
+      'calories': calories,
+      'carbohydrates': carbs,
+      'protein': protein,
+      'fat': fat,
+    };
+  }
+
+  List<FoodItem> getFoodsByMeal(String meal, DateTime date) {
+    final keyDate = _normalizeDate(date);
+    return _mealFoods[keyDate]?[meal] ?? [];
   }
 
   String getFormattedDate(DateTime date) {
@@ -84,7 +135,7 @@ class DailyNutritionProvider with ChangeNotifier {
   Map<DateTime, double> getDailyCaloriesForGraph() {
     final result = <DateTime, double>{};
     for (var entry in _dailyNutritions.entries) {
-      final date = DateTime(entry.key.year, entry.key.month, entry.key.day);
+      final date = _normalizeDate(entry.key);
       result[date] = entry.value['calories'] ?? 0;
     }
     return result;
@@ -97,11 +148,7 @@ class DailyNutritionProvider with ChangeNotifier {
 
     for (int i = 0; i < sorted.length; i += 7) {
       final chunk = sorted.skip(i).take(7);
-      final weekStart = DateTime(
-        chunk.first.key.year,
-        chunk.first.key.month,
-        chunk.first.key.day,
-      );
+      final weekStart = chunk.first.key;
       final total = chunk.fold<double>(0, (sum, e) => sum + (e.value['calories'] ?? 0));
       result[weekStart] = total;
     }
@@ -124,36 +171,11 @@ class DailyNutritionProvider with ChangeNotifier {
     });
   }
 
-  Map<String, double> getMealNutrition(String meal, DateTime date) {
-    if (meal == '아침' && isSameDay(date, DateTime(2025, 7, 11))) {
-      return {
-        'calories': 400,
-        'carbohydrates': 50,
-        'protein': 10,
-        'fat': 5,
-      };
-    } else {
-      return {
-        'calories': 0,
-        'carbohydrates': 0,
-        'protein': 0,
-        'fat': 0,
-      };
-    }
-  }
-
-  List<Map<String, dynamic>> getFoodsByMeal(String meal, DateTime date) {
-    if (meal == '아침' && isSameDay(date, DateTime(2025, 7, 11))) {
-      return [
-        {'name': '사과', 'amount': 200, 'calories': 100, 'count': 1},
-        {'name': '바나나', 'amount': 150, 'calories': 150, 'count': 1},
-      ];
-    } else {
-      return [];
-    }
-  }
-
   bool isSameDay(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  DateTime _normalizeDate(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
   }
 }

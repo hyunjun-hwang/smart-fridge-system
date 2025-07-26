@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_fridge_system/providers/daily_nutrition_provider.dart';
 import 'package:smart_fridge_system/ui/pages/nutrition/record_entry_screen.dart';
+import 'package:smart_fridge_system/data/models/food_item.dart';
 
 class MealDetailScreen extends StatelessWidget {
   final String mealType;
@@ -12,13 +13,11 @@ class MealDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<DailyNutritionProvider>(context);
-    final nutrition = provider.getMealNutrition(mealType, date);
-    final foods = provider.getFoodsByMeal(mealType, date);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF2F2F7),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFD5E8C6),
         elevation: 0,
         leading: BackButton(color: Colors.green),
         title: Text(
@@ -27,80 +26,180 @@ class MealDetailScreen extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                _buildMacroBar("탄수화물", nutrition['carbohydrates'] ?? 0, Colors.blue[100]!),
-                _buildMacroBar("단백질", nutrition['protein'] ?? 0, Colors.purple[100]!),
-                _buildMacroBar("지방", nutrition['fat'] ?? 0, Colors.green[100]!),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: foods.length,
-              itemBuilder: (context, index) {
-                final food = foods[index];
-                return ListTile(
-                  leading: const Image(image: AssetImage('assets/apple.png'), width: 40),
-                  title: Text(food['name']),
-                  subtitle: Text('${food['amount']}g ${food['calories']}kcal'),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('x${food['count']}'),
-                      const SizedBox(width: 4),
-                      const Icon(Icons.more_vert, size: 18),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFB4D9A6),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => RecordEntryScreen(mealType: mealType, date: date),
+      body: Consumer<DailyNutritionProvider>(
+        builder: (context, provider, _) {
+          final foods = provider.getFoodsByMeal(mealType, date);
+          final nutrition = provider.getMealNutrition(mealType, date);
+          final targetCal = provider.targetCalories;
+          final totalCal = nutrition['calories'] ?? 0;
+
+          return Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                color: Colors.white,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('총 섭취 칼로리', style: TextStyle(fontSize: 14, color: Colors.grey)),
+                    const SizedBox(height: 4),
+                    RichText(
+                      text: TextSpan(
+                        children: [
+                          TextSpan(
+                            text: '${totalCal.toStringAsFixed(0)}kcal',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                              color: Colors.black,
+                            ),
+                          ),
+                          TextSpan(
+                            text: ' / ${targetCal.toStringAsFixed(0)}kcal',
+                            style: const TextStyle(fontSize: 16, color: Colors.grey),
+                          ),
+                        ],
+                      ),
                     ),
-                  );
-                },
-                child: const Text('음식 추가'),
+                    const SizedBox(height: 12),
+                    _buildMacroBar('탄수화물', nutrition['carbohydrates'] ?? 0, Colors.blue[100]!),
+                    _buildMacroBar('단백질', nutrition['protein'] ?? 0, Colors.purple[100]!),
+                    _buildMacroBar('지방', nutrition['fat'] ?? 0, Colors.green[100]!),
+                  ],
+                ),
               ),
-            ),
-          )
-        ],
+              const SizedBox(height: 8),
+              Expanded(
+                child: ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: foods.length,
+                  itemBuilder: (context, index) {
+                    final food = foods[index];
+
+                    return StatefulBuilder(
+                      builder: (context, setState) {
+                        double count = food.count;
+
+                        void update(double delta) {
+                          count = (count + delta).clamp(0.0, 99.0);
+
+                          if (count == 0) {
+                            provider.removeFoodItem(mealType, date, food.name);
+                          } else {
+                            provider.updateFoodCount(mealType, date, food.name, count);
+                          }
+
+                          setState(() {});
+                        }
+
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.asset(
+                                  food.imagePath.isNotEmpty ? food.imagePath : 'assets/default_food.png',
+                                  width: 50,
+                                  height: 50,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(food.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                    Text(
+                                      '1개(${food.amount}g) ${food.calories}kcal',
+                                      style: const TextStyle(fontSize: 13, color: Colors.grey),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Row(
+                                children: [
+                                  _circleBtn(Icons.remove, () => update(-0.5)),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                    child: Text(
+                                      '${count.toStringAsFixed(1)}',
+                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                  _circleBtn(Icons.add, () => update(0.5)),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  },
+                  separatorBuilder: (context, index) => const SizedBox(height: 12),
+                ),
+              ),
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.all(16),
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFD5E8C6),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => RecordEntryScreen(mealType: mealType, date: date),
+                      ),
+                    );
+                  },
+                  child: const Text('음식 추가', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              )
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _circleBtn(IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.green.shade200),
+        ),
+        child: Icon(icon, size: 24, color: Colors.green.shade800),
+        padding: const EdgeInsets.all(4),
       ),
     );
   }
 
   Widget _buildMacroBar(String label, double value, Color color) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
         children: [
-          Text(label, style: const TextStyle(fontSize: 13)),
-          const SizedBox(height: 4),
-          LinearProgressIndicator(
-            value: (value / 100).clamp(0.0, 1.0),
-            color: color,
-            backgroundColor: Colors.grey[200],
-            minHeight: 8,
+          SizedBox(width: 70, child: Text(label, style: const TextStyle(fontSize: 13))),
+          Expanded(
+            child: LinearProgressIndicator(
+              value: (value / 100).clamp(0.0, 1.0),
+              color: color,
+              backgroundColor: Colors.grey[200],
+              minHeight: 8,
+            ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(width: 8),
           Text('${value.toStringAsFixed(1)}g', style: const TextStyle(fontSize: 12, color: Colors.grey)),
         ],
       ),
