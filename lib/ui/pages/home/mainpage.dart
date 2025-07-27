@@ -333,11 +333,11 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
-                Text('나의 섭취 내역', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+                Text('나의 섭취 내역', style: TextStyle(color: kTextColor, fontWeight: FontWeight.bold, fontSize: 17)),
                 SizedBox(height: 15),
-                Text('총 섭취 칼로리'),
-                SizedBox(height: 4),
-                Text('1,000kcal / 1,800kcal', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                Text('총 섭취 칼로리', style: TextStyle(color: kTextColor, fontSize: 15)),
+                SizedBox(height: 3),
+                Text('1,000kcal / 1,800kcal', style: TextStyle(color: kTextColor, fontWeight: FontWeight.bold, fontSize: 16)),
               ],
             ),
           ),
