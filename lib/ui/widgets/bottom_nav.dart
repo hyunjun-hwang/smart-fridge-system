@@ -6,6 +6,8 @@ import 'package:smart_fridge_system/ui/pages/home/mainpage.dart';
 import 'package:smart_fridge_system/ui/pages/recipe/recipe_main_page.dart';
 import 'package:smart_fridge_system/ui/pages/nutrition/nutrition_screen.dart';
 import 'package:smart_fridge_system/ui/pages/refrigerator/add_food_item_dialog.dart';
+import 'package:provider/provider.dart';
+import 'package:smart_fridge_system/providers/daily_nutrition_provider.dart';
 
 class BottomNav extends StatefulWidget {
   const BottomNav({super.key});
@@ -18,7 +20,7 @@ class _BottomNavState extends State<BottomNav> {
   int _selectedIndex = 0;
   bool _isMenuOpen = false;
 
-  static const List<Widget> _widgetOptions = <Widget>[
+  static final List<Widget> _widgetOptions = <Widget>[
     HomePage(),
     FridgePage(),
     RecipeMainPage(),

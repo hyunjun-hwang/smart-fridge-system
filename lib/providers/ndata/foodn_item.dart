@@ -1,6 +1,6 @@
-class FoodItem {
+class FoodItemn {
   final String name;            // 음식 이름 (예: 사과)
-  final int calories;           // 1개당 칼로리
+  final double calories;           // 1개당 칼로리
   final double carbohydrates;   // 탄수화물 (g)
   final double protein;         // 단백질 (g)
   final double fat;             // 지방 (g)
@@ -8,7 +8,7 @@ class FoodItem {
   final double count;           // 먹은 개수 (0.5 단위 가능)
   final String imagePath;       // 이미지 경로 (asset path 또는 URL)
 
-  FoodItem({
+  FoodItemn({
     required this.name,
     required this.calories,
     required this.carbohydrates,
@@ -20,8 +20,8 @@ class FoodItem {
   });
 
   /// ✅ JSON → 객체 (API 응답 받을 때)
-  factory FoodItem.fromJson(Map<String, dynamic> json) {
-    return FoodItem(
+  factory FoodItemn.fromJson(Map<String, dynamic> json) {
+    return FoodItemn(
       name: json['name'],
       calories: json['calories'],
       carbohydrates: (json['carbohydrates'] as num).toDouble(),
@@ -48,9 +48,9 @@ class FoodItem {
   }
 
   /// ✅ 일부 속성만 변경해서 새 객체 만들기
-  FoodItem copyWith({
+  FoodItemn copyWith({
     String? name,
-    int? calories,
+    double? calories,
     double? carbohydrates,
     double? protein,
     double? fat,
@@ -58,7 +58,7 @@ class FoodItem {
     double? count,
     String? imagePath,
   }) {
-    return FoodItem(
+    return FoodItemn(
       name: name ?? this.name,
       calories: calories ?? this.calories,
       carbohydrates: carbohydrates ?? this.carbohydrates,

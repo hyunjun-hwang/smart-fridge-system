@@ -1,7 +1,10 @@
+// 📦 record_entry_screen.dart
 import 'package:flutter/material.dart';
-import 'package:smart_fridge_system/ui/pages/nutrition/search_food_screen.dart'; // ✅ 추가한 화면 import
+import 'package:smart_fridge_system/data/models/food_item.dart';
+import 'package:smart_fridge_system/ui/pages/nutrition/search_food_screen.dart';
+import 'package:smart_fridge_system/providers/ndata/foodn_item.dart';
 
-class RecordEntryScreen extends StatelessWidget {
+class RecordEntryScreen extends StatefulWidget {
   final String mealType;
   final DateTime date;
 
@@ -11,27 +14,33 @@ class RecordEntryScreen extends StatelessWidget {
     required this.date,
   }) : super(key: key);
 
+  @override
+  State<RecordEntryScreen> createState() => _RecordEntryScreenState();
+}
+
+class _RecordEntryScreenState extends State<RecordEntryScreen> {
   static const Color _textColor = Color(0xFF003508);
   static const Color _borderColor = Color(0xFFC7D8A4);
 
+  List<FoodItemn> foods = [
+    FoodItemn(
+      name: '사과',
+      calories: 104.0,
+      carbohydrates: 27.6,
+      protein: 0.5,
+      fat: 0.3,
+      amount: 200,
+      count: 1.0,
+      imagePath: 'https://cdn-icons-png.flaticon.com/512/415/415682.png',
+    )
+  ];
+
   @override
   Widget build(BuildContext context) {
-    // 더미 데이터
-    final foods = List.generate(4, (_) => {
-      'name': '사과',
-      'amount': '1개(200g)',
-      'calories': 100,
-      'carbs': 27.8,
-      'protein': 0.3,
-      'fat': 0.2,
-      'image': 'https://cdn-icons-png.flaticon.com/512/415/415682.png',
-    });
-
-    final totalCalories = foods.fold(0, (sum, f) => sum + (f['calories'] as int));
-    final totalCarbs = foods.fold(0.0, (sum, f) => sum + (f['carbs'] as double));
-    final totalProtein = foods.fold(0.0, (sum, f) => sum + (f['protein'] as double));
-    final totalFat = foods.fold(0.0, (sum, f) => sum + (f['fat'] as double));
-    final targetCal = 1800;
+    final totalCalories = foods.fold<double>(0, (sum, f) => sum + (f.calories * f.count));
+    final totalCarbs = foods.fold<double>(0, (sum, f) => sum + (f.carbohydrates * f.count));
+    final totalProtein = foods.fold<double>(0, (sum, f) => sum + (f.protein * f.count));
+    final totalFat = foods.fold<double>(0, (sum, f) => sum + (f.fat * f.count));
 
     return Scaffold(
       backgroundColor: const Color(0xFFF2F2F7),
@@ -39,7 +48,7 @@ class RecordEntryScreen extends StatelessWidget {
         backgroundColor: _borderColor,
         foregroundColor: _textColor,
         centerTitle: true,
-        title: Text('$mealType 기록하기'),
+        title: Text('${widget.mealType} 기록하기'),
       ),
       body: Column(
         children: [
@@ -56,14 +65,14 @@ class RecordEntryScreen extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      Text(mealType, style: const TextStyle(color: _textColor)),
+                      Text(widget.mealType, style: const TextStyle(color: _textColor)),
                       const Icon(Icons.arrow_drop_down, color: _textColor),
                     ],
                   ),
                 ),
                 const Spacer(),
                 Text(
-                  '${date.month}월 ${date.day}일 (${_getWeekday(date)})',
+                  '${widget.date.month}월 ${widget.date.day}일 (${_getWeekday(widget.date)})',
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black87),
                 ),
               ],
@@ -81,16 +90,16 @@ class RecordEntryScreen extends StatelessWidget {
                     style: const TextStyle(fontSize: 14, color: Colors.black54),
                     children: [
                       TextSpan(
-                        text: '$totalCalories',
+                        text: '${totalCalories.toStringAsFixed(0)}',
                         style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),
                       ),
                       const TextSpan(
                         text: 'kcal',
                         style: TextStyle(fontSize: 16, color: Colors.black),
                       ),
-                      TextSpan(
-                        text: ' /$targetCal kcal',
-                        style: const TextStyle(fontSize: 16, color: Colors.grey),
+                      const TextSpan(
+                        text: ' /1800 kcal',
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
                       ),
                     ],
                   ),
@@ -117,15 +126,34 @@ class RecordEntryScreen extends StatelessWidget {
                     border: Border.all(color: _borderColor.withOpacity(0.3)),
                   ),
                   child: ListTile(
-                    leading: Image.network(food['image'] as String, width: 40, height: 40),
-                    title: Text(food['name'] as String, style: const TextStyle(color: _textColor)),
-                    subtitle: Text('${food['amount']} ${food['calories']}kcal', style: const TextStyle(color: Colors.black54)),
+                    leading: Image.network(food.imagePath, width: 40, height: 40),
+                    title: Text(food.name, style: const TextStyle(color: _textColor)),
+                    subtitle: Text(
+                      '${(food.amount * food.count).toStringAsFixed(1)}g '
+                          '${(food.calories * food.count).toStringAsFixed(1)}kcal',
+                    ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Text('1', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
-                        SizedBox(width: 4),
-                        Icon(Icons.add_circle_outline, color: _textColor),
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.remove_circle_outline, color: _textColor),
+                          onPressed: () {
+                            setState(() {
+                              if (food.count > 0.5) {
+                                foods[index] = food.copyWith(count: food.count - 0.5);
+                              }
+                            });
+                          },
+                        ),
+                        Text('${food.count}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        IconButton(
+                          icon: const Icon(Icons.add_circle_outline, color: _textColor),
+                          onPressed: () {
+                            setState(() {
+                              foods[index] = food.copyWith(count: food.count + 0.5);
+                            });
+                          },
+                        ),
                       ],
                     ),
                   ),
@@ -139,13 +167,19 @@ class RecordEntryScreen extends StatelessWidget {
               width: double.infinity,
               height: 48,
               child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
+                onPressed: () async {
+                  final result = await Navigator.push<FoodItemn>(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => SearchFoodScreen(mealType: mealType, date: date),
+                      builder: (_) => SearchFoodScreen(mealType: widget.mealType, date: widget.date),
                     ),
                   );
+
+                  if (result != null) {
+                    setState(() {
+                      foods.add(result);
+                    });
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _borderColor,

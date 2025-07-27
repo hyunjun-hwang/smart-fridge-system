@@ -53,9 +53,9 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
               ElevatedButton(
                 onPressed: () {
                   if (_formKey.currentState!.validate()) {
-                    final newFood = FoodItem(
+                    final newFood = FoodItemn(
                       name: _nameController.text,
-                      calories: int.tryParse(_calorieController.text) ?? 0,
+                      calories: double.tryParse(_calorieController.text) ?? 0,
                       carbohydrates: double.tryParse(_carbController.text) ?? 0,
                       fat: double.tryParse(_fatController.text) ?? 0,
                       protein: double.tryParse(_proteinController.text) ?? 0,

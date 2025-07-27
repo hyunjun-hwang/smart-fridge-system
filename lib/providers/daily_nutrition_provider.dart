@@ -5,15 +5,19 @@ import 'package:smart_fridge_system/providers/ndata/foodn_item.dart';
 class DailyNutritionProvider with ChangeNotifier {
   double _targetCalories = 1800;
 
+  double get targetCalories => _targetCalories;
+  void setTargetCalories(double calories) {
+    _targetCalories = calories;
+    notifyListeners();
+  }
+
   // 날짜별 총 영양소 저장
   final Map<DateTime, Map<String, double>> _dailyNutritions = {};
 
   // 날짜별 식사별 음식 리스트
-  final Map<DateTime, Map<String, List<FoodItem>>> _mealFoods = {};
+  final Map<DateTime, Map<String, List<FoodItemn>>> _mealFoods = {};
 
   DateTime _selectedDate = DateTime.now();
-
-  double get targetCalories => _targetCalories;
   Map<DateTime, Map<String, double>> get dailyNutritions => _dailyNutritions;
   DateTime get selectedDate => _selectedDate;
 
@@ -28,17 +32,12 @@ class DailyNutritionProvider with ChangeNotifier {
     };
   }
 
-  void setTargetCalories(double calories) {
-    _targetCalories = calories;
-    notifyListeners();
-  }
-
   void setSelectedDate(DateTime date) {
     _selectedDate = _normalizeDate(date);
     notifyListeners();
   }
 
-  void addFoodItem(DateTime date, String mealType, FoodItem item) {
+  void addFoodItem(DateTime date, String mealType, FoodItemn item) {
     final keyDate = _normalizeDate(date);
 
     _mealFoods.putIfAbsent(keyDate, () => {});
@@ -59,7 +58,6 @@ class DailyNutritionProvider with ChangeNotifier {
 
     final oldItem = foodList[index];
 
-    // 수량이 0이면 삭제
     if (newCount <= 0) {
       foodList.removeAt(index);
     } else {
@@ -81,12 +79,11 @@ class DailyNutritionProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // 해당 날짜의 총 영양소 재계산
   void _recalculateDayNutrition(DateTime keyDate) {
     double totalCalories = 0, carbs = 0, protein = 0, fat = 0;
 
-    _mealFoods[keyDate]?.forEach((_, List<FoodItem> mealFoods) {
-      for (final FoodItem item in mealFoods) {
+    _mealFoods[keyDate]?.forEach((_, List<FoodItemn> mealFoods) {
+      for (final item in mealFoods) {
         totalCalories += item.calories * item.count;
         carbs += item.carbohydrates * item.count;
         protein += item.protein * item.count;
@@ -123,7 +120,7 @@ class DailyNutritionProvider with ChangeNotifier {
     };
   }
 
-  List<FoodItem> getFoodsByMeal(String meal, DateTime date) {
+  List<FoodItemn> getFoodsByMeal(String meal, DateTime date) {
     final keyDate = _normalizeDate(date);
     return _mealFoods[keyDate]?[meal] ?? [];
   }

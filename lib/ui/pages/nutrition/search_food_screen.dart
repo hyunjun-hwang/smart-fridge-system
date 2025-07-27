@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:smart_fridge_system/data/models/food_item.dart';
+import 'package:smart_fridge_system/providers/ndata/foodn_item.dart';
+import 'package:smart_fridge_system/ui/pages/nutrition/food_detail_dialog.dart';
+import 'package:smart_fridge_system/ui/pages/nutrition/record_entry_screen.dart';
+import 'package:smart_fridge_system/ui/pages/nutrition/addfood_screen.dart'; // ✅ 새 음식 추가 화면 연결
 
 class SearchFoodScreen extends StatefulWidget {
   final String mealType;
@@ -16,15 +20,30 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
   final List<String> filters = ['검색', '즐겨찾기', '내 음식', '냉장고'];
   final TextEditingController _searchController = TextEditingController();
 
-  final List<FoodItem> fridgeItems = [
+  List<FoodItem> recentSearches = [
     FoodItem(
-      name: '토마토',
+      name: '사과',
       quantity: 2,
       unit: Unit.count,
       expiryDate: DateTime(2025, 8, 15),
       stockedDate: DateTime(2025, 7, 24),
-      imageUrl: 'https://cdn-icons-png.flaticon.com/512/590/590685.png',
-      category: '채소',
+      imageUrl: 'https://cdn-icons-png.flaticon.com/512/415/415682.png',
+      category: '과일',
+      storage: StorageType.fridge,
+    ),
+  ];
+
+  List<FoodItem> favoriteItems = [];
+
+  List<FoodItem> fridgeItems = [
+    FoodItem(
+      name: '사과',
+      quantity: 2,
+      unit: Unit.count,
+      expiryDate: DateTime(2025, 8, 15),
+      stockedDate: DateTime(2025, 7, 24),
+      imageUrl: 'https://cdn-icons-png.flaticon.com/512/415/415682.png',
+      category: '과일',
       storage: StorageType.fridge,
     ),
     FoodItem(
@@ -39,6 +58,10 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
     ),
   ];
 
+  void _addFoodAndReturn(FoodItemn food) {
+    Navigator.pop(context, food);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -52,10 +75,7 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
         ),
         title: const Text(
           '영양소',
-          style: TextStyle(
-            color: Color(0xFF003508),
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Color(0xFF003508), fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         actions: const [
@@ -67,7 +87,6 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
       ),
       body: Column(
         children: [
-          // 필터 버튼들
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
@@ -81,22 +100,16 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
                     onSelected: (_) => setState(() => selectedIndex = index),
                     selectedColor: const Color(0xFFD5E8C6),
                     backgroundColor: Colors.white,
-                    labelStyle: TextStyle(
-                      color: isSelected ? const Color(0xFF003508) : Colors.black54,
-                    ),
+                    labelStyle: TextStyle(color: isSelected ? const Color(0xFF003508) : Colors.black54),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
-                      side: BorderSide(
-                        color: isSelected ? const Color(0xFFD5E8C6) : Colors.grey.shade300,
-                      ),
+                      side: BorderSide(color: isSelected ? const Color(0xFFD5E8C6) : Colors.grey.shade300),
                     ),
                   ),
                 );
               }),
             ),
           ),
-
-          // 검색창
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Container(
@@ -117,10 +130,7 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
               ),
             ),
           ),
-
           const SizedBox(height: 16),
-
-          // 새 음식 추가 / 레시피에서 추가 버튼 (선택 인덱스 2일 때만 표시)
           if (selectedIndex == 2)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -131,12 +141,30 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFD5E8C6),
                         foregroundColor: const Color(0xFF003508),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      onPressed: () {
-                        // TODO: 새 음식 추가 화면으로 이동
+                      onPressed: () async {
+                        final newFood = await Navigator.push<FoodItemn>(
+                          context,
+                          MaterialPageRoute(builder: (_) => const AddFoodScreen()),
+                        );
+                        if (newFood != null) {
+                          // 새 음식 항목을 recentSearches에 추가
+                          setState(() {
+                            recentSearches.add(
+                              FoodItem(
+                                name: newFood.name,
+                                quantity: newFood.count.toInt(),
+                                unit: Unit.count,
+                                expiryDate: DateTime.now().add(const Duration(days: 7)),
+                                stockedDate: DateTime.now(),
+                                imageUrl: newFood.imagePath,
+                                category: '기타',
+                                storage: StorageType.fridge,
+                              ),
+                            );
+                          });
+                        }
                       },
                       child: const Text('새 음식 추가'),
                     ),
@@ -147,31 +175,29 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFD5E8C6),
                         foregroundColor: const Color(0xFF003508),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      onPressed: () {
-                        // TODO: 레시피에서 추가 화면으로 이동
-                      },
+                      onPressed: () {},
                       child: const Text('레시피에서 추가'),
                     ),
                   ),
                 ],
               ),
             ),
-
           const SizedBox(height: 16),
-
-          // 본문
           Expanded(
-            child: selectedIndex == 3
-                ? _buildRefrigeratorList()
-                : const Center(
-              child: Text(
-                '최근에 추가한 항목이 없습니다.',
-                style: TextStyle(color: Colors.grey),
-              ),
+            child: Builder(
+              builder: (_) {
+                if (selectedIndex == 0) {
+                  return _buildFoodList(recentSearches);
+                } else if (selectedIndex == 1) {
+                  return _buildFoodList(favoriteItems);
+                } else if (selectedIndex == 3) {
+                  return _buildFoodList(fridgeItems);
+                } else {
+                  return const Center(child: Text('최근에 추가한 항목이 없습니다.', style: TextStyle(color: Colors.grey)));
+                }
+              },
             ),
           ),
         ],
@@ -179,24 +205,64 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
     );
   }
 
-  Widget _buildRefrigeratorList() {
+  Widget _buildFoodList(List<FoodItem> items) {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: fridgeItems.length,
+      itemCount: items.length,
       itemBuilder: (context, index) {
-        final item = fridgeItems[index];
-        return Card(
+        final item = items[index];
+        final isFavorite = favoriteItems.contains(item);
+        return Container(
           margin: const EdgeInsets.only(bottom: 12),
-          elevation: 1,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFD5E8C6), width: 2),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black12,
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
           child: ListTile(
             contentPadding: const EdgeInsets.all(12),
             leading: Image.network(item.imageUrl, width: 48, height: 48),
             title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold)),
             subtitle: Text('수량: ${item.quantity}${item.unit == Unit.count ? '개' : 'g'}'),
-            trailing: const Icon(Icons.chevron_right),
+            trailing: IconButton(
+              icon: Icon(
+                isFavorite ? Icons.star : Icons.star_border,
+                color: isFavorite ? Colors.amber : Colors.grey,
+              ),
+              onPressed: () {
+                setState(() {
+                  if (isFavorite) {
+                    favoriteItems.remove(item);
+                  } else {
+                    favoriteItems.add(item);
+                  }
+                });
+              },
+            ),
             onTap: () {
-              // TODO: 상세 수정 다이얼로그 띄우려면 여기에 EditFoodItemDialog 호출
+              final foodItemn = FoodItemn(
+                name: item.name,
+                calories: 52,
+                carbohydrates: 13.8,
+                protein: 0.3,
+                fat: 0.2,
+                amount: 100,
+                count: 1.0,
+                imagePath: item.imageUrl,
+              );
+
+              showFoodDetailDialog(
+                context: context,
+                item: foodItemn,
+                onAdd: _addFoodAndReturn,
+              );
             },
           ),
         );
