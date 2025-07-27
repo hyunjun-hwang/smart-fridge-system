@@ -12,6 +12,17 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
   String _sortOption = '추천 레시피 순';
   int _currentIndex = 2;
 
+  void _showMealPopup() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => const AddMealPopup(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -20,7 +31,6 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
         child: Column(
           children: [
             const SizedBox(height: 16),
-            // ✅ 상단 제목 + 알림 아이콘
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
@@ -48,7 +58,6 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
               ),
             ),
             const SizedBox(height: 16),
-            // 검색창
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: TextField(
@@ -70,7 +79,6 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
               ),
             ),
             const SizedBox(height: 8),
-            // 정렬 옵션
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
@@ -122,7 +130,6 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
               ),
             ),
             const SizedBox(height: 8),
-            // 레시피 리스트
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -151,31 +158,39 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
           ],
         ),
       ),
-      // 하단 네비게이션
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: const Color(0xFFD1DFA6),
-        selectedItemColor: const Color(0xFF003508),
-        unselectedItemColor: Colors.white,
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: '홈'),
-          BottomNavigationBarItem(icon: Icon(Icons.kitchen), label: '냉장고'),
-          BottomNavigationBarItem(icon: Icon(Icons.rice_bowl), label: '레시피'),
-          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: '영양소'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: '프로필'),
-        ],
+      bottomNavigationBar: BottomAppBar(
+        shape: const CircularNotchedRectangle(),
+        notchMargin: 8,
+        child: BottomNavigationBar(
+          backgroundColor: const Color(0xFFD1DFA6),
+          selectedItemColor: const Color(0xFF003508),
+          unselectedItemColor: Colors.white,
+          currentIndex: _currentIndex,
+          onTap: (index) {
+            setState(() {
+              _currentIndex = index;
+            });
+          },
+          type: BottomNavigationBarType.fixed,
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.home), label: '홈'),
+            BottomNavigationBarItem(icon: Icon(Icons.kitchen), label: '냉장고'),
+            BottomNavigationBarItem(icon: Icon(Icons.rice_bowl), label: '레시피'),
+            BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: '영양소'),
+            BottomNavigationBarItem(icon: Icon(Icons.person), label: '프로필'),
+          ],
+        ),
       ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF00BBA3),
+        onPressed: _showMealPopup,
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 }
 
-// 레시피 카드 위젯
 class RecipeCard extends StatelessWidget {
   final String imagePath;
   final String title;
@@ -276,7 +291,6 @@ class RecipeCard extends StatelessWidget {
   }
 }
 
-// 알림 페이지 예시
 class NotificationPage extends StatelessWidget {
   const NotificationPage({super.key});
 
@@ -292,6 +306,87 @@ class NotificationPage extends StatelessWidget {
         child: Text(
           '알림이 없습니다.',
           style: TextStyle(fontSize: 16),
+        ),
+      ),
+    );
+  }
+}
+
+class AddMealPopup extends StatelessWidget {
+  const AddMealPopup({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final Map<String, int> kcalMap = {
+      '아침': 100,
+      '점심': 0,
+      '저녁': 0,
+      '아침 간식': 0,
+      '점심 간식': 0,
+      '저녁 간식': 0,
+    };
+    String selectedMeal = '아침';
+
+    return StatefulBuilder(
+      builder: (context, setState) => Container(
+        padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('식단 추가', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF003508))),
+            const SizedBox(height: 24),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              alignment: WrapAlignment.center,
+              children: kcalMap.keys.map((meal) {
+                final selected = selectedMeal == meal;
+                return GestureDetector(
+                  onTap: () => setState(() => selectedMeal = meal),
+                  child: Container(
+                    width: 100,
+                    height: 70,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: selected ? const Color(0xFFB7D09D) : const Color(0xFFD9E4C2),
+                        width: 1.2,
+                      ),
+                      color: selected ? const Color(0xFFD9E4C2) : Colors.white,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(meal, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF003508))),
+                        const SizedBox(height: 6),
+                        Text('${kcalMap[meal]}kcal', style: TextStyle(fontWeight: selected ? FontWeight.bold : FontWeight.normal, fontSize: 16, color: selected ? const Color(0xFF003508) : Colors.grey[700])),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context, selectedMeal),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFD1DFA6),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Text('추가하기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
