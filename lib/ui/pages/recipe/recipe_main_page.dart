@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:smart_fridge_system/ui/pages/recipe/recipe_card.dart';
-import 'saved_meals_page.dart';
 
 class RecipeMainPage extends StatefulWidget {
   const RecipeMainPage({super.key});
@@ -11,166 +9,246 @@ class RecipeMainPage extends StatefulWidget {
 
 class _RecipeMainPageState extends State<RecipeMainPage> {
   final TextEditingController _searchController = TextEditingController();
-  String _sortOption = '추천 순';
-
-  final List<String> ownedIngredients = ['아보카도', '방울토마토', '바나나'];
-
-  List<Map<String, String>> allRecipes = [
-    {
-      'title': '아보카도 샐러드',
-      'subtitle': '아보카도로 만든 샐러드',
-      'image': 'assets/avocado.png',
-      'ingredients': '아보카도 1개, 바나나 1개, 방울토마토',
-      'time': '25분',
-      'kcal': '350kcal',
-    },
-    {
-      'title': '바나나 팬케이크',
-      'subtitle': '아이들이 좋아하는 팬케이크',
-      'image': 'assets/pancake.png',
-      'ingredients': '바나나 2~4개, 핫케이크 믹스',
-      'time': '15분',
-      'kcal': '280kcal',
-    },
-  ];
-
-  List<Map<String, String>> filteredRecipes = [];
-
-  @override
-  void initState() {
-    super.initState();
-    filteredRecipes = List.from(allRecipes);
-    _searchController.addListener(_filterRecipes);
-  }
-
-  void _filterRecipes() {
-    final query = _searchController.text.toLowerCase();
-    setState(() {
-      filteredRecipes = allRecipes.where((recipe) {
-        return recipe['title']!.toLowerCase().contains(query) ||
-            recipe['ingredients']!.toLowerCase().contains(query);
-      }).toList();
-      _applySorting();
-    });
-  }
-
-  void _applySorting() {
-    if (_sortOption == '칼로리 낮은 순') {
-      filteredRecipes.sort((a, b) {
-        final aKcal = int.tryParse(a['kcal']!.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
-        final bKcal = int.tryParse(b['kcal']!.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
-        return aKcal.compareTo(bKcal);
-      });
-    } else if (_sortOption == '시간 짧은 순') {
-      filteredRecipes.sort((a, b) {
-        final aMin = int.tryParse(a['time']!.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
-        final bMin = int.tryParse(b['time']!.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
-        return aMin.compareTo(bMin);
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  int _currentIndex = 1;
-
-  void _onTabTapped(int index) {
-    if (index == 3) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const SavedMealsPage()),
-      );
-    } else {
-      setState(() {
-        _currentIndex = index;
-      });
-    }
-  }
+  String _sortOption = '추천 레시피 순';
+  int _currentIndex = 2;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("레시피"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none),
-            onPressed: () {},
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: '여기에 검색하세요.',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+      backgroundColor: const Color(0xFFF2F2F2),
+      body: SafeArea(
+        child: Column(
+          children: [
+            const SizedBox(height: 16),
+            const Center(
+              child: Text(
+                '레시피',
+                style: TextStyle(
+                  fontFamily: 'Pretendard Variable',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 20,
+                  color: Color(0xFF003508),
                 ),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('정렬 기준:', style: TextStyle(fontSize: 16)),
-                PopupMenuButton<String>(
-                  onSelected: (value) {
-                    setState(() {
-                      _sortOption = value;
-                      _applySorting();
-                    });
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(value: '추천 순', child: Text('추천 순')),
-                    const PopupMenuItem(value: '칼로리 낮은 순', child: Text('칼로리 낮은 순')),
-                    const PopupMenuItem(value: '시간 짧은 순', child: Text('조리 시간 짧은 순')),
-                  ],
-                  child: Row(
-                    children: [
-                      Text(_sortOption),
-                      const Icon(Icons.arrow_drop_down),
-                    ],
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  hintText: '여기에 검색하세요.',
+                  hintStyle: const TextStyle(
+                    fontFamily: 'Pretendard Variable',
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                  prefixIcon: const Icon(Icons.search, color: Color(0xFF003508)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: const BorderSide(color: Color(0xFF003508)),
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
-          Expanded(
-            child: ListView(
-              children: filteredRecipes.map((recipe) {
-                return RecipeCard(
-                  title: recipe['title']!,
-                  subtitle: recipe['subtitle']!,
-                  imagePath: recipe['image']!,
-                  ingredients: recipe['ingredients']!,
-                  time: recipe['time']!,
-                  kcal: recipe['kcal']!,
-                  ownedIngredients: ownedIngredients,
-                );
-              }).toList(),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    '추천 레시피 순',
+                    style: TextStyle(
+                      fontFamily: 'Pretendard Variable',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: Color(0xFF003508),
+                    ),
+                  ),
+                  PopupMenuButton<String>(
+                    onSelected: (String value) {
+                      setState(() {
+                        _sortOption = value;
+                      });
+                    },
+                    itemBuilder: (BuildContext context) => [
+                      const PopupMenuItem<String>(
+                        value: '추천 레시피 순',
+                        child: Text('추천 레시피 순'),
+                      ),
+                      const PopupMenuItem<String>(
+                        value: '칼로리 순',
+                        child: Text('칼로리 순'),
+                      ),
+                      const PopupMenuItem<String>(
+                        value: '유통기한 임박 순',
+                        child: Text('유통기한 임박 순'),
+                      ),
+                    ],
+                    child: Row(
+                      children: [
+                        Text(
+                          _sortOption,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF003508),
+                          ),
+                        ),
+                        const Icon(Icons.arrow_drop_down, color: Color(0xFF003508))
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: const [
+                  RecipeCard(
+                    imagePath: 'assets/avocado_salad.jpg',
+                    title: '아보카도 샐러드',
+                    subtitle: '아보카도로 만든 샐러드',
+                    ingredients: '아보카도 1개, 바나나 1개, 방울토마토 5개, 젓가락, 피망 1개, 양상추...',
+                  ),
+                  RecipeCard(
+                    imagePath: 'assets/banana_pancake.jpg',
+                    title: '바나나 팬케이크',
+                    subtitle: '아이들이 좋아하는 팬케이크',
+                    ingredients: '바나나 2~4개, 핫케이크 믹스 300g, 블루베리 50g, 설탕, 시럽...',
+                  ),
+                  RecipeCard(
+                    imagePath: 'assets/salad_diet.jpg',
+                    title: '샐러드',
+                    subtitle: '다이어트용',
+                    ingredients: '방울토마토 4개, 파스타, 상추, 배추, 양배추',
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
       bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: const Color(0xFFD1DFA6),
+        selectedItemColor: const Color(0xFF003508),
+        unselectedItemColor: Colors.white,
         currentIndex: _currentIndex,
-        onTap: _onTabTapped,
+        onTap: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        type: BottomNavigationBarType.fixed,
         items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: '홈'),
           BottomNavigationBarItem(icon: Icon(Icons.kitchen), label: '냉장고'),
-          BottomNavigationBarItem(icon: Icon(Icons.book), label: '레시피'),
-          BottomNavigationBarItem(icon: Icon(Icons.local_dining), label: '영양소'),
+          BottomNavigationBarItem(icon: Icon(Icons.rice_bowl), label: '레시피'),
+          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: '영양소'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: '프로필'),
+        ],
+      ),
+    );
+  }
+}
+
+class RecipeCard extends StatelessWidget {
+  final String imagePath;
+  final String title;
+  final String subtitle;
+  final String ingredients;
+
+  const RecipeCard({
+    super.key,
+    required this.imagePath,
+    required this.title,
+    required this.subtitle,
+    required this.ingredients,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: Colors.white,
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Image.asset(
+              imagePath,
+              width: 120,
+              height: 120,
+              fit: BoxFit.cover,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontFamily: 'Pretendard Variable',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      color: Color(0xFF003508),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontFamily: 'Pretendard Variable',
+                      fontWeight: FontWeight.w400,
+                      fontSize: 14,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '재료',
+                    style: const TextStyle(
+                      fontFamily: 'Pretendard Variable',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: Color(0xFF003508),
+                    ),
+                  ),
+                  Text(
+                    ingredients,
+                    style: const TextStyle(
+                      fontFamily: 'Pretendard Variable',
+                      fontWeight: FontWeight.w400,
+                      fontSize: 14,
+                      color: Color(0xFF003508),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: const [
+                      Icon(Icons.access_time, size: 16, color: Color(0xFF003508)),
+                      SizedBox(width: 4),
+                      Text('25분', style: TextStyle(fontSize: 13, color: Color(0xFF003508))),
+                      SizedBox(width: 16),
+                      Icon(Icons.local_fire_department, size: 16, color: Color(0xFF003508)),
+                      SizedBox(width: 4),
+                      Text('350kcal', style: TextStyle(fontSize: 13, color: Color(0xFF003508))),
+                    ],
+                  )
+                ],
+              ),
+            ),
+          )
         ],
       ),
     );
