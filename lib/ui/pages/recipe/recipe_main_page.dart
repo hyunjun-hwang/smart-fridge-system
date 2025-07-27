@@ -20,18 +20,35 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
         child: Column(
           children: [
             const SizedBox(height: 16),
-            const Center(
-              child: Text(
-                '레시피',
-                style: TextStyle(
-                  fontFamily: 'Pretendard Variable',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 20,
-                  color: Color(0xFF003508),
-                ),
+            // ✅ 상단 제목 + 알림 아이콘
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    '레시피',
+                    style: TextStyle(
+                      fontFamily: 'Pretendard Variable',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 20,
+                      color: Color(0xFF003508),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.notifications_none, color: Color(0xFF003508)),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const NotificationPage()),
+                      );
+                    },
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 16),
+            // 검색창
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: TextField(
@@ -53,6 +70,7 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
               ),
             ),
             const SizedBox(height: 8),
+            // 정렬 옵션
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
@@ -104,6 +122,7 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
               ),
             ),
             const SizedBox(height: 8),
+            // 레시피 리스트
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -132,6 +151,7 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
           ],
         ),
       ),
+      // 하단 네비게이션
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: const Color(0xFFD1DFA6),
         selectedItemColor: const Color(0xFF003508),
@@ -155,6 +175,7 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
   }
 }
 
+// 레시피 카드 위젯
 class RecipeCard extends StatelessWidget {
   final String imagePath;
   final String title;
@@ -215,9 +236,9 @@ class RecipeCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
+                  const Text(
                     '재료',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Pretendard Variable',
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
@@ -250,6 +271,28 @@ class RecipeCard extends StatelessWidget {
             ),
           )
         ],
+      ),
+    );
+  }
+}
+
+// 알림 페이지 예시
+class NotificationPage extends StatelessWidget {
+  const NotificationPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('알림'),
+        backgroundColor: const Color(0xFF003508),
+        foregroundColor: Colors.white,
+      ),
+      body: const Center(
+        child: Text(
+          '알림이 없습니다.',
+          style: TextStyle(fontSize: 16),
+        ),
       ),
     );
   }
