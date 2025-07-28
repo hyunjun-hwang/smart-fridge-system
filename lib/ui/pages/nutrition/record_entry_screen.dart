@@ -1,4 +1,3 @@
-// 📦 record_entry_screen.dart
 import 'package:flutter/material.dart';
 import 'package:smart_fridge_system/data/models/food_item.dart';
 import 'package:smart_fridge_system/ui/pages/nutrition/search_food_screen.dart';
@@ -81,117 +80,120 @@ class _RecordEntryScreenState extends State<RecordEntryScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                const SizedBox(height: 8),
+            RichText(
+              text: TextSpan(
+                  text: '총 섭취 칼로리',
+                  style: const TextStyle(fontSize: 14, color: Colors.black54),
               children: [
-                const SizedBox(height: 8),
-                RichText(
-                  text: TextSpan(
-                    text: '총 섭취 칼로리\n',
-                    style: const TextStyle(fontSize: 14, color: Colors.black54),
-                    children: [
-                      TextSpan(
-                        text: '${totalCalories.toStringAsFixed(0)}',
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),
-                      ),
-                      const TextSpan(
-                        text: 'kcal',
-                        style: TextStyle(fontSize: 16, color: Colors.black),
-                      ),
-                      const TextSpan(
-                        text: ' /1800 kcal',
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
-                      ),
-                    ],
-                  ),
+                TextSpan(
+                  text: '${totalCalories.toStringAsFixed(0)}',
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),
                 ),
-                const SizedBox(height: 8),
-                _buildNutritionBar('탄수화물', totalCarbs, Colors.blue.shade200),
-                _buildNutritionBar('단백질', totalProtein, Colors.green.shade200),
-                _buildNutritionBar('지방', totalFat, Colors.teal.shade200),
+                const TextSpan(
+                  text: 'kcal',
+                  style: TextStyle(fontSize: 16, color: Colors.black),
+                ),
+                const TextSpan(
+                  text: ' /1800 kcal',
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                ),
               ],
             ),
           ),
           const SizedBox(height: 8),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: foods.length,
-              itemBuilder: (_, index) {
-                final food = foods[index];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: _borderColor.withOpacity(0.3)),
-                  ),
-                  child: ListTile(
-                    leading: Image.network(food.imagePath, width: 40, height: 40),
-                    title: Text(food.name, style: const TextStyle(color: _textColor)),
-                    subtitle: Text(
-                      '${(food.amount * food.count).toStringAsFixed(1)}g '
-                          '${(food.calories * food.count).toStringAsFixed(1)}kcal',
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.remove_circle_outline, color: _textColor),
-                          onPressed: () {
-                            setState(() {
-                              if (food.count > 0.5) {
-                                foods[index] = food.copyWith(count: food.count - 0.5);
-                              }
-                            });
-                          },
-                        ),
-                        Text('${food.count}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                        IconButton(
-                          icon: const Icon(Icons.add_circle_outline, color: _textColor),
-                          onPressed: () {
-                            setState(() {
-                              foods[index] = food.copyWith(count: food.count + 0.5);
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
-                onPressed: () async {
-                  final result = await Navigator.push<FoodItemn>(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => SearchFoodScreen(mealType: widget.mealType, date: widget.date),
-                    ),
-                  );
-
-                  if (result != null) {
-                    setState(() {
-                      foods.add(result);
-                    });
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _borderColor,
-                  foregroundColor: _textColor,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                child: const Text('음식 추가', style: TextStyle(fontSize: 16)),
-              ),
-            ),
-          ),
+          _buildNutritionBar('탄수화물', totalCarbs, Colors.blue.shade200),
+          _buildNutritionBar('단백질', totalProtein, Colors.green.shade200),
+          _buildNutritionBar('지방', totalFat, Colors.teal.shade200),
         ],
       ),
+    ),
+    const SizedBox(height: 8),
+    Expanded(
+    child: ListView.builder(
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    itemCount: foods.length,
+    itemBuilder: (_, index) {
+    final food = foods[index];
+    return Container(
+    margin: const EdgeInsets.only(bottom: 12),
+    decoration: BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(12),
+    border: Border.all(color: _borderColor.withOpacity(0.3)),
+    ),
+    child: ListTile(
+    leading: Image.network(food.imagePath, width: 40, height: 40),
+    title: Text(food.name, style: const TextStyle(color: _textColor)),
+    subtitle: Text(
+    '${(food.amount * food.count).toStringAsFixed(1)}g '
+    '${(food.calories * food.count).toStringAsFixed(1)}kcal',
+    ),
+    trailing: Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+    IconButton(
+    icon: const Icon(Icons.remove_circle_outline, color: _textColor),
+    onPressed: () {
+    setState(() {
+    if (food.count > 0.5) {
+    foods[index] = food.copyWith(count: food.count - 0.5);
+    }
+    });
+    },
+    ),
+    Text('${food.count}', style: const TextStyle(fontWeight: FontWeight.bold)),
+    IconButton(
+    icon: const Icon(Icons.add_circle_outline, color: _textColor),
+    onPressed: () {
+    setState(() {
+    foods[index] = food.copyWith(count: food.count + 0.5);
+    });
+    },
+    ),
+    ],
+    ),
+    onTap: () {
+    showFoodInfoDialog(context, food);
+    },
+    ),
+    );
+    },
+    ),
+    ),
+    Padding(
+    padding: const EdgeInsets.all(16),
+    child: SizedBox(
+    width: double.infinity,
+    height: 48,
+    child: ElevatedButton(
+    onPressed: () async {
+    final result = await Navigator.push<FoodItemn>(
+    context,
+    MaterialPageRoute(
+    builder: (_) => SearchFoodScreen(mealType: widget.mealType, date: widget.date),
+    ),
+    );
+
+    if (result != null) {
+    setState(() {
+    foods.add(result);
+    });
+    }
+    },
+    style: ElevatedButton.styleFrom(
+    backgroundColor: _borderColor,
+    foregroundColor: _textColor,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    ),
+    child: const Text('음식 추가', style: TextStyle(fontSize: 16)),
+    ),
+    ),
+    ),
+    ],
+    ),
     );
   }
 
@@ -218,5 +220,64 @@ class _RecordEntryScreenState extends State<RecordEntryScreen> {
   String _getWeekday(DateTime date) {
     const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
     return weekdays[date.weekday - 1];
+  }
+
+  void showFoodInfoDialog(BuildContext context, FoodItemn food) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        contentPadding: EdgeInsets.zero,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              child: Image.network(food.imagePath, height: 180, fit: BoxFit.cover),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  Text(food.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: _textColor)),
+                  const SizedBox(height: 12),
+                  _infoRow('칼로리', '${food.calories} kcal'),
+                  _infoRow('탄수화물', '${food.carbohydrates.toStringAsFixed(1)} g'),
+                  _infoRow('단백질', '${food.protein.toStringAsFixed(1)} g'),
+                  _infoRow('지방', '${food.fat.toStringAsFixed(1)} g'),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _borderColor,
+                  foregroundColor: _textColor,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  minimumSize: const Size.fromHeight(48),
+                ),
+                child: const Text('닫기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _infoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 15, color: Colors.black87)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+        ],
+      ),
+    );
   }
 }
