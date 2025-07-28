@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:smart_fridge_system/providers/ndata/foodn_item.dart';
 
@@ -43,7 +42,7 @@ Future<void> showFoodDetailDialog({
             ),
 
             const SizedBox(height: 20),
-            _infoRow('칼로리', '${item.calories} kcal'),
+            _infoRow('칼로리(1개기준)', '${item.calories} kcal'),
             _infoRow('탄수화물', '${item.carbohydrates.toStringAsFixed(1)} g'),
             _infoRow('단백질', '${item.protein.toStringAsFixed(1)} g'),
             _infoRow('지방', '${item.fat.toStringAsFixed(1)} g'),
@@ -69,8 +68,8 @@ Future<void> showFoodDetailDialog({
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () {
-                      onAdd(item);
-                      Navigator.pop(context);
+                      onAdd(item); // ✅ 여기서 Navigator.pop(context, item) 실행됨
+                      // ❌ 여기서는 더 이상 Navigator.pop(context) 호출하지 않음
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFC7D8A4),

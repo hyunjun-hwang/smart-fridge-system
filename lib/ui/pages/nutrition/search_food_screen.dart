@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:smart_fridge_system/data/models/food_item.dart';
+import 'package:smart_fridge_system/providers/daily_nutrition_provider.dart';
 import 'package:smart_fridge_system/providers/ndata/foodn_item.dart';
 import 'package:smart_fridge_system/ui/pages/nutrition/food_detail_dialog.dart';
 import 'package:smart_fridge_system/ui/pages/nutrition/record_entry_screen.dart';
-import 'package:smart_fridge_system/ui/pages/nutrition/addfood_screen.dart'; // ✅ 새 음식 추가 화면 연결
+import 'package:smart_fridge_system/ui/pages/nutrition/addfood_screen.dart';
 
 class SearchFoodScreen extends StatefulWidget {
   final String mealType;
@@ -59,7 +61,20 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
   ];
 
   void _addFoodAndReturn(FoodItemn food) {
-    Navigator.pop(context, food);
+    final provider = Provider.of<DailyNutritionProvider>(context, listen: false);
+    provider.addFood(widget.mealType, widget.date, food);
+
+    Navigator.pop(context); // 모달 닫기
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RecordEntryScreen(
+          mealType: widget.mealType,
+          date: widget.date,
+        ),
+      ),
+    );
   }
 
   @override
@@ -149,7 +164,6 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
                           MaterialPageRoute(builder: (_) => const AddFoodScreen()),
                         );
                         if (newFood != null) {
-                          // 새 음식 항목을 recentSearches에 추가
                           setState(() {
                             recentSearches.add(
                               FoodItem(
@@ -249,11 +263,11 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
             onTap: () {
               final foodItemn = FoodItemn(
                 name: item.name,
-                calories: 52,
-                carbohydrates: 13.8,
-                protein: 0.3,
-                fat: 0.2,
-                amount: 100,
+                calories: 104,
+                carbohydrates: 27.6,
+                protein: 0.6,
+                fat: 0.4,
+                amount: 200,
                 count: 1.0,
                 imagePath: item.imageUrl,
               );

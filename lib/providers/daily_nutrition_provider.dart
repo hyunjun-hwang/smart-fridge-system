@@ -4,24 +4,26 @@ import 'package:smart_fridge_system/providers/ndata/foodn_item.dart';
 
 class DailyNutritionProvider with ChangeNotifier {
   double _targetCalories = 1800;
+  double get totalCalories {
+    final keyDate = _normalizeDate(_selectedDate);
+    return _dailyNutritions[keyDate]?['calories'] ?? 0;
+  }
 
   double get targetCalories => _targetCalories;
+
   void setTargetCalories(double calories) {
     _targetCalories = calories;
     notifyListeners();
   }
 
-  // 날짜별 총 영양소 저장
   final Map<DateTime, Map<String, double>> _dailyNutritions = {};
-
-  // 날짜별 식사별 음식 리스트
   final Map<DateTime, Map<String, List<FoodItemn>>> _mealFoods = {};
 
   DateTime _selectedDate = DateTime.now();
+
   Map<DateTime, Map<String, double>> get dailyNutritions => _dailyNutritions;
   DateTime get selectedDate => _selectedDate;
 
-  // 현재 날짜의 총 섭취 영양소
   Map<String, double> get currentDayNutrition {
     final keyDate = _normalizeDate(_selectedDate);
     return _dailyNutritions[keyDate] ?? {
@@ -37,31 +39,39 @@ class DailyNutritionProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void addFoodItem(DateTime date, String mealType, FoodItemn item) {
+  void addFood(String mealType, DateTime date, FoodItemn item) {
     final keyDate = _normalizeDate(date);
 
     _mealFoods.putIfAbsent(keyDate, () => {});
     _mealFoods[keyDate]!.putIfAbsent(mealType, () => []);
-    _mealFoods[keyDate]![mealType]!.add(item);
+
+    final existingIndex =
+    _mealFoods[keyDate]![mealType]!.indexWhere((f) => f.name == item.name);
+
+    if (existingIndex != -1) {
+      final existing = _mealFoods[keyDate]![mealType]![existingIndex];
+      _mealFoods[keyDate]![mealType]![existingIndex] =
+          existing.copyWith(count: existing.count + item.count);
+    } else {
+      _mealFoods[keyDate]![mealType]!.add(item);
+    }
 
     _recalculateDayNutrition(keyDate);
     notifyListeners();
   }
 
-  void updateFoodCount(String mealType, DateTime date, String foodName, double newCount) {
+  void updateFood(String mealType, DateTime date, FoodItemn item) {
     final keyDate = _normalizeDate(date);
     final foodList = _mealFoods[keyDate]?[mealType];
     if (foodList == null) return;
 
-    final index = foodList.indexWhere((item) => item.name == foodName);
+    final index = foodList.indexWhere((f) => f.name == item.name);
     if (index == -1) return;
 
-    final oldItem = foodList[index];
-
-    if (newCount <= 0) {
+    if (item.count <= 0) {
       foodList.removeAt(index);
     } else {
-      foodList[index] = oldItem.copyWith(count: newCount);
+      foodList[index] = item;
     }
 
     _recalculateDayNutrition(keyDate);
@@ -74,6 +84,23 @@ class DailyNutritionProvider with ChangeNotifier {
     if (foodList == null) return;
 
     foodList.removeWhere((item) => item.name == foodName);
+
+    _recalculateDayNutrition(keyDate);
+    notifyListeners();
+  }
+
+  /// ✅ 안전한 삭제 (음식 객체 기반)
+  void removeFoodItemByObject(String mealType, DateTime date, FoodItemn item) {
+    final keyDate = _normalizeDate(date);
+    final foodList = _mealFoods[keyDate]?[mealType];
+    if (foodList == null) return;
+
+    foodList.removeWhere((element) =>
+    element.name == item.name &&
+        element.calories == item.calories &&
+        element.carbohydrates == item.carbohydrates &&
+        element.protein == item.protein &&
+        element.fat == item.fat);
 
     _recalculateDayNutrition(keyDate);
     notifyListeners();
@@ -146,7 +173,8 @@ class DailyNutritionProvider with ChangeNotifier {
     for (int i = 0; i < sorted.length; i += 7) {
       final chunk = sorted.skip(i).take(7);
       final weekStart = chunk.first.key;
-      final total = chunk.fold<double>(0, (sum, e) => sum + (e.value['calories'] ?? 0));
+      final total =
+      chunk.fold<double>(0, (sum, e) => sum + (e.value['calories'] ?? 0));
       result[weekStart] = total;
     }
 
@@ -156,7 +184,8 @@ class DailyNutritionProvider with ChangeNotifier {
   Map<DateTime, double> getMonthlyCalories() {
     final Map<String, double> temp = {};
     for (var entry in _dailyNutritions.entries) {
-      final key = '${entry.key.year}-${entry.key.month.toString().padLeft(2, '0')}';
+      final key =
+          '${entry.key.year}-${entry.key.month.toString().padLeft(2, '0')}';
       temp[key] = (temp[key] ?? 0) + (entry.value['calories'] ?? 0);
     }
 
@@ -174,5 +203,11 @@ class DailyNutritionProvider with ChangeNotifier {
 
   DateTime _normalizeDate(DateTime date) {
     return DateTime(date.year, date.month, date.day);
+  }
+
+  void clearAll() {
+    _dailyNutritions.clear();
+    _mealFoods.clear();
+    notifyListeners();
   }
 }

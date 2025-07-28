@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_fridge_system/providers/daily_nutrition_provider.dart';
 import 'package:smart_fridge_system/ui/pages/nutrition/record_entry_screen.dart';
-import 'package:smart_fridge_system/data/models/food_item.dart';
+import 'package:smart_fridge_system/providers/ndata/foodn_item.dart';
 
 class MealDetailScreen extends StatelessWidget {
   final String mealType;
@@ -78,7 +78,10 @@ class MealDetailScreen extends StatelessWidget {
 
                     return StatefulBuilder(
                       builder: (context, setState) {
-                        double count = food.count;
+                        double count = provider
+                            .getFoodsByMeal(mealType, date)
+                            .firstWhere((f) => f.name == food.name)
+                            .count;
 
                         void update(double delta) {
                           count = (count + delta).clamp(0.0, 99.0);
@@ -86,7 +89,7 @@ class MealDetailScreen extends StatelessWidget {
                           if (count == 0) {
                             provider.removeFoodItem(mealType, date, food.name);
                           } else {
-                            provider.updateFoodCount(mealType, date, food.name, count);
+                            provider.updateFood(mealType, date, food.copyWith(count: count));
                           }
 
                           setState(() {});
@@ -102,11 +105,13 @@ class MealDetailScreen extends StatelessWidget {
                             children: [
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
-                                child: Image.asset(
-                                  food.imagePath.isNotEmpty ? food.imagePath : 'assets/default_food.png',
+                                child: Image.network(
+                                  food.imagePath,
                                   width: 50,
                                   height: 50,
                                   fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                  const Icon(Icons.image_not_supported, size: 50),
                                 ),
                               ),
                               const SizedBox(width: 12),

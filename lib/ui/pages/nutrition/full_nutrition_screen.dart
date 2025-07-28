@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_fridge_system/providers/daily_nutrition_provider.dart';
+import 'package:smart_fridge_system/ui/pages/nutrition/meal_detail_screen.dart';
 
 class FullNutritionScreen extends StatefulWidget {
-  final Map<String, dynamic> current;
+  final Map<String, double> current;
   final double consumed;
   final double targetCal;
 
@@ -25,21 +26,9 @@ class _FullNutritionScreenState extends State<FullNutritionScreen> {
   static const Color _textColor = Color(0xFF003508);
   static const Color _accentColor = Color(0xFFC7D8A4);
 
-  final Map<String, Map<String, double>> _weeklyAvg = {
-    '3주 전': {'calories': 1720},
-    '2주 전': {'calories': 1800},
-    '1주 전': {'calories': 1650},
-    '이번 주': {'calories': 1750},
-  };
-
-  final Map<String, Map<String, double>> _monthlyAvg = {
-    '5월': {'calories': 1850},
-    '6월': {'calories': 1780},
-    '7월': {'calories': 1900},
-  };
-
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<DailyNutritionProvider>(context);
     const meals = ['아침', '점심', '저녁', '아침간식', '점심간식', '저녁간식'];
 
     final periodLabel = {
@@ -98,10 +87,18 @@ class _FullNutritionScreenState extends State<FullNutritionScreen> {
                   childAspectRatio: 1.3,
                 ),
                 itemCount: meals.length,
-                itemBuilder: (_, idx) => _MealCard(
-                  label: meals[idx],
-                  kcal: widget.current[meals[idx]]?.toInt() ?? 0,
-                ),
+                itemBuilder: (_, idx) {
+                  final kcal = provider.getMealNutrition(meals[idx], provider.selectedDate)['calories'] ?? 0;
+                  return GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => MealDetailScreen(mealType: meals[idx], date: provider.selectedDate),
+                      ),
+                    ),
+                    child: _MealCard(label: meals[idx], kcal: kcal.toInt()),
+                  );
+                },
               ),
             ),
           ],
@@ -116,16 +113,81 @@ class _FullNutritionScreenState extends State<FullNutritionScreen> {
         return Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildDailyCalorieBar(widget.consumed, widget.targetCal),
+            _buildDailyCalorieBar(),
             const SizedBox(height: 16),
-            _buildDailyNutritionBars(widget.current),
+            _buildDailyNutritionBars(),
           ],
         );
       case PeriodType.weekly:
-        return _buildBarChart(_weeklyAvg);
+        final weekly = Provider.of<DailyNutritionProvider>(context, listen: false).getWeeklyCalories();
+        final data = weekly.map((date, cal) => MapEntry(_formatLabel(date), {'calories': cal / 7}));
+        return _buildBarChart(data);
       case PeriodType.monthly:
-        return _buildBarChart(_monthlyAvg);
+        final monthly = Provider.of<DailyNutritionProvider>(context, listen: false).getMonthlyCalories();
+        final data = monthly.map((date, cal) => MapEntry(_formatMonthLabel(date), {'calories': cal / DateTime(date.year, date.month + 1, 0).day}));
+        return _buildBarChart(data);
     }
+  }
+
+  String _formatLabel(DateTime date) => '${date.month}/${date.day}';
+  String _formatMonthLabel(DateTime date) => '${date.month}월';
+
+  Widget _buildDailyCalorieBar() {
+    final ratio = widget.targetCal > 0 ? (widget.consumed / widget.targetCal).clamp(0.0, 1.0) : 0.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('칼로리 섭취량', style: TextStyle(color: _textColor)),
+        const SizedBox(height: 8),
+        LinearProgressIndicator(
+          value: ratio,
+          color: _accentColor,
+          backgroundColor: Colors.grey.shade200,
+          minHeight: 18,
+        ),
+        const SizedBox(height: 8),
+        Text('${widget.consumed.toInt()} / ${widget.targetCal.toInt()} kcal',
+            style: const TextStyle(color: _textColor, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+
+  Widget _buildDailyNutritionBars() {
+    final carbs = widget.current['carbohydrates'] ?? 0.0;
+    final protein = widget.current['protein'] ?? 0.0;
+    final fat = widget.current['fat'] ?? 0.0;
+    final total = carbs + protein + fat;
+    double getRatio(double v) => total > 0 ? (v / total) : 0.0;
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _buildBar(label: '탄수화물', value: carbs, ratio: getRatio(carbs), color: Colors.lightGreen),
+        const SizedBox(height: 6),
+        _buildBar(label: '단백질', value: protein, ratio: getRatio(protein), color: Colors.green),
+        const SizedBox(height: 6),
+        _buildBar(label: '지방', value: fat, ratio: getRatio(fat), color: Colors.teal),
+      ],
+    );
+  }
+
+  Widget _buildBar({required String label, required double value, required double ratio, required Color color}) {
+    return Row(
+      children: [
+        SizedBox(width: 70, child: Text(label, style: const TextStyle(color: _textColor)) ),
+        Expanded(
+          child: LinearProgressIndicator(
+            value: ratio.clamp(0.0, 1.0),
+            color: color,
+            backgroundColor: Colors.grey[200],
+            minHeight: 10,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text('${value.toStringAsFixed(1)}g', style: const TextStyle(color: _textColor)),
+      ],
+    );
   }
 
   Widget _buildBarChart(Map<String, Map<String, double>> data) {
@@ -178,64 +240,6 @@ class _FullNutritionScreenState extends State<FullNutritionScreen> {
         gridData: FlGridData(show: false),
         borderData: FlBorderData(show: false),
       ),
-    );
-  }
-
-  Widget _buildDailyCalorieBar(double consumed, double target) {
-    final ratio = target > 0 ? (consumed / target).clamp(0.0, 1.0) : 0.0;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('칼로리 섭취량', style: TextStyle(color: _textColor)),
-        const SizedBox(height: 8),
-        LinearProgressIndicator(
-          value: ratio,
-          color: _accentColor,
-          backgroundColor: Colors.grey.shade200,
-          minHeight: 18,
-        ),
-        const SizedBox(height: 8),
-        Text('${consumed.toInt()} / ${target.toInt()} kcal',
-            style: const TextStyle(color: _textColor, fontWeight: FontWeight.bold)),
-      ],
-    );
-  }
-
-  Widget _buildDailyNutritionBars(Map<String, dynamic> nutrition) {
-    final carbs = (nutrition['carbohydrates'] ?? 0).toDouble();
-    final protein = (nutrition['protein'] ?? 0).toDouble();
-    final fat = (nutrition['fat'] ?? 0).toDouble();
-    final total = carbs + protein + fat;
-    double getRatio(double v) => total > 0 ? (v / total) : 0.0;
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        _buildBar(label: '탄수화물', value: carbs, ratio: getRatio(carbs), color: Colors.lightGreen),
-        const SizedBox(height: 6),
-        _buildBar(label: '단백질', value: protein, ratio: getRatio(protein), color: Colors.green),
-        const SizedBox(height: 6),
-        _buildBar(label: '지방', value: fat, ratio: getRatio(fat), color: Colors.teal),
-      ],
-    );
-  }
-
-  Widget _buildBar({required String label, required double value, required double ratio, required Color color}) {
-    return Row(
-      children: [
-        SizedBox(width: 70, child: Text(label, style: const TextStyle(color: _textColor))),
-        Expanded(
-          child: LinearProgressIndicator(
-            value: ratio.clamp(0.0, 1.0),
-            color: color,
-            backgroundColor: Colors.grey[200],
-            minHeight: 10,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text('${value.toStringAsFixed(1)}g', style: const TextStyle(color: _textColor)),
-      ],
     );
   }
 
