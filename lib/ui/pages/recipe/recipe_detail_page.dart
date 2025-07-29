@@ -3,8 +3,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'meal.dart';
 import 'meal_storage.dart';
 
-class RecipeDetailSvgScreen extends StatelessWidget {
-  const RecipeDetailSvgScreen({super.key});
+class RecipeDetailPage extends StatelessWidget {
+  const RecipeDetailPage({super.key});
 
   void _showMealSelectionDialog(BuildContext context) {
     showModalBottomSheet(
@@ -73,12 +73,13 @@ class RecipeDetailSvgScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text("레시피 상세"),
         centerTitle: true,
+        backgroundColor: const Color(0xFF003508),
+        foregroundColor: Colors.white,
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // 🔼 레시피 대표 이미지
             Image.asset(
               'assets/images/recipe.png',
               width: 200,
@@ -86,8 +87,6 @@ class RecipeDetailSvgScreen extends StatelessWidget {
               fit: BoxFit.cover,
             ),
             const SizedBox(height: 16),
-
-            // 🔽 이미지 아이콘 Row 1
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -97,10 +96,7 @@ class RecipeDetailSvgScreen extends StatelessWidget {
                 _buildImageIcon('assets/images/refrigerator.png'),
               ],
             ),
-
             const SizedBox(height: 12),
-
-            // 🔽 이미지 아이콘 Row 2
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -109,40 +105,23 @@ class RecipeDetailSvgScreen extends StatelessWidget {
                 _buildImageIcon('assets/images/bacode.png'),
               ],
             ),
-
             const SizedBox(height: 16),
-
-            // 🔽 기존 SVG 유지
-            Expanded(
-              child: SvgPicture.asset(
-                'assets/icons/recipe_detail_page.svg',
-                width: double.infinity,
-                fit: BoxFit.contain,
-              ),
+            SvgPicture.asset(
+              'assets/icons/recipe_detail_page.svg',
+              width: double.infinity,
+              fit: BoxFit.contain,
             ),
+            const SizedBox(height: 80),
           ],
         ),
       ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: ElevatedButton.icon(
-            icon: const Icon(Icons.add),
-            label: const Text("식단에 추가"),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-              textStyle: const TextStyle(fontSize: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onPressed: () => _showMealSelectionDialog(context),
-          ),
-        ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showMealSelectionDialog(context),
+        icon: const Icon(Icons.add),
+        label: const Text("식단에 추가"),
+        backgroundColor: const Color(0xFF00BBA3),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 }
