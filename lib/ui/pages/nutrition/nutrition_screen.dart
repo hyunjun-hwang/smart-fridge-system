@@ -173,8 +173,15 @@ class _NutritionContentState extends State<_NutritionContent> {
             center: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('${consumed.toInt()}kcal',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: _textColor)),
+                Text(
+                  '${consumed.toInt()}kcal',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: consumed > provider.targetCalories ? Color(0xFFD36A4F) : _textColor,
+                  ),
+                ),
+
                 GestureDetector(
                   onTap: () => _showTargetInputDialog(context),
                   child: Row(
