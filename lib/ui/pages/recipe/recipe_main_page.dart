@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'recipe_detail_page.dart'; // ✅ 상세페이지 연결용
 
 class RecipeMainPage extends StatefulWidget {
   const RecipeMainPage({super.key});
@@ -133,20 +134,28 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                children: const [
-                  RecipeCard(
-                    imagePath: 'assets/avocado_salad.jpg',
-                    title: '아보카도 샐러드',
-                    subtitle: '아보카도로 만든 샐러드',
-                    ingredients: '아보카도 1개, 바나나 1개, 방울토마토 5개, 젓가락, 피망 1개, 양상추...',
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const RecipeDetailPage()),
+                      );
+                    },
+                    child: const RecipeCard(
+                      imagePath: 'assets/avocado_salad.jpg',
+                      title: '아보카도 샐러드',
+                      subtitle: '아보카도로 만든 샐러드',
+                      ingredients: '아보카도 1개, 바나나 1개, 방울토마토 5개, 젓가락, 피망 1개, 양상추...',
+                    ),
                   ),
-                  RecipeCard(
+                  const RecipeCard(
                     imagePath: 'assets/banana_pancake.jpg',
                     title: '바나나 팬케이크',
                     subtitle: '아이들이 좋아하는 팬케이크',
                     ingredients: '바나나 2~4개, 핫케이크 믹스 300g, 블루베리 50g, 설탕, 시럽...',
                   ),
-                  RecipeCard(
+                  const RecipeCard(
                     imagePath: 'assets/salad_diet.jpg',
                     title: '샐러드',
                     subtitle: '다이어트용',
@@ -186,7 +195,7 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
         onPressed: _showMealPopup,
         child: const Icon(Icons.add, color: Colors.white),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
     );
   }
 }
@@ -260,14 +269,23 @@ class RecipeCard extends StatelessWidget {
                       color: Color(0xFF003508),
                     ),
                   ),
-                  Text(
-                    ingredients,
-                    style: const TextStyle(
-                      fontFamily: 'Pretendard Variable',
-                      fontWeight: FontWeight.w400,
-                      fontSize: 14,
-                      color: Color(0xFF003508),
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          ingredients,
+                          softWrap: true,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 2,
+                          style: const TextStyle(
+                            fontFamily: 'Pretendard Variable',
+                            fontWeight: FontWeight.w400,
+                            fontSize: 14,
+                            color: Color(0xFF003508),
+                          ),
+                        ),
+                      )
+                    ],
                   ),
                   const SizedBox(height: 8),
                   Row(
@@ -286,108 +304,6 @@ class RecipeCard extends StatelessWidget {
             ),
           )
         ],
-      ),
-    );
-  }
-}
-
-class NotificationPage extends StatelessWidget {
-  const NotificationPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('알림'),
-        backgroundColor: const Color(0xFF003508),
-        foregroundColor: Colors.white,
-      ),
-      body: const Center(
-        child: Text(
-          '알림이 없습니다.',
-          style: TextStyle(fontSize: 16),
-        ),
-      ),
-    );
-  }
-}
-
-class AddMealPopup extends StatelessWidget {
-  const AddMealPopup({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final Map<String, int> kcalMap = {
-      '아침': 100,
-      '점심': 0,
-      '저녁': 0,
-      '아침 간식': 0,
-      '점심 간식': 0,
-      '저녁 간식': 0,
-    };
-    String selectedMeal = '아침';
-
-    return StatefulBuilder(
-      builder: (context, setState) => Container(
-        padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('식단 추가', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF003508))),
-            const SizedBox(height: 24),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              alignment: WrapAlignment.center,
-              children: kcalMap.keys.map((meal) {
-                final selected = selectedMeal == meal;
-                return GestureDetector(
-                  onTap: () => setState(() => selectedMeal = meal),
-                  child: Container(
-                    width: 100,
-                    height: 70,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: selected ? const Color(0xFFB7D09D) : const Color(0xFFD9E4C2),
-                        width: 1.2,
-                      ),
-                      color: selected ? const Color(0xFFD9E4C2) : Colors.white,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(meal, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF003508))),
-                        const SizedBox(height: 6),
-                        Text('${kcalMap[meal]}kcal', style: TextStyle(fontWeight: selected ? FontWeight.bold : FontWeight.normal, fontSize: 16, color: selected ? const Color(0xFF003508) : Colors.grey[700])),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(context, selectedMeal),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFD1DFA6),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Text('추가하기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
