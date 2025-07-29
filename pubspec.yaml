@@ -32,6 +32,4 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/images/avocado_salad.jpg
-    - assets/images/banana_pancake.jpg
-    - assets/images/salad_diet.jpg
+    - assets/images/

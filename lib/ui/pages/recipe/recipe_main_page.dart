@@ -13,7 +13,9 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
   String _sortOption = '추천 레시피 순';
   int _currentIndex = 2;
 
+  // AddMealPopup을 사용하던 함수 내용을 주석 처리하여 비활성화
   void _showMealPopup() {
+    /*
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -22,6 +24,7 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
       ),
       builder: (context) => const AddMealPopup(),
     );
+    */
   }
 
   @override
@@ -49,10 +52,13 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
                   IconButton(
                     icon: const Icon(Icons.notifications_none, color: Color(0xFF003508)),
                     onPressed: () {
+                      // NotificationPage로 이동하는 코드를 주석 처리하여 비활성화
+                      /*
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => const NotificationPage()),
                       );
+                      */
                     },
                   ),
                 ],
