@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'recipe_detail_page.dart'; // ✅ 상세페이지 연결용
+import 'recipe_detail_page.dart';
 
 class RecipeMainPage extends StatefulWidget {
   const RecipeMainPage({super.key});
@@ -15,28 +15,29 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F2F2),
+      backgroundColor: Colors.white, // ✅ 완전 흰 배경
       body: SafeArea(
         child: Column(
           children: [
-            const SizedBox(height: 16),
+            const SizedBox(height: 32),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  const Spacer(),
                   const Text(
                     '레시피',
                     style: TextStyle(
                       fontFamily: 'Pretendard Variable',
-                      fontWeight: FontWeight.w600,
-                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 24,
                       color: Color(0xFF003508),
                     ),
                   ),
+                  const Spacer(),
                   IconButton(
                     icon: const Icon(Icons.notifications_none, color: Color(0xFF003508)),
-                    onPressed: () {}, // 알림 버튼 비활성화
+                    onPressed: () {},
                   ),
                 ],
               ),
@@ -47,7 +48,7 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                   hintText: '여기에 검색하세요.',
                   hintStyle: const TextStyle(
                     fontFamily: 'Pretendard Variable',
@@ -55,28 +56,22 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
                     color: Colors.grey,
                   ),
                   prefixIcon: const Icon(Icons.search, color: Color(0xFF003508)),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: const BorderSide(color: Color(0xFF003508)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(28),
+                    borderSide: const BorderSide(color: Color(0xFF7BAA7F), width: 2),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(28),
+                    borderSide: const BorderSide(color: Color(0xFF003508), width: 2),
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    '추천 레시피 순',
-                    style: TextStyle(
-                      fontFamily: 'Pretendard Variable',
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      color: Color(0xFF003508),
-                    ),
-                  ),
                   PopupMenuButton<String>(
                     onSelected: (String value) {
                       setState(() {
@@ -102,11 +97,13 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
                         Text(
                           _sortOption,
                           style: const TextStyle(
+                            fontFamily: 'Pretendard Variable',
+                            fontWeight: FontWeight.w600,
                             fontSize: 14,
                             color: Color(0xFF003508),
                           ),
                         ),
-                        const Icon(Icons.arrow_drop_down, color: Color(0xFF003508))
+                        const Icon(Icons.arrow_drop_down, color: Color(0xFF003508)),
                       ],
                     ),
                   ),
@@ -171,92 +168,93 @@ class RecipeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
+      margin: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
         color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(16),
             child: Image.asset(
               imagePath,
-              width: 120,
-              height: 120,
+              width: 100,
+              height: 100,
               fit: BoxFit.cover,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontFamily: 'Pretendard Variable',
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                      color: Color(0xFF003508),
-                    ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontFamily: 'Pretendard Variable',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    color: Color(0xFF003508),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontFamily: 'Pretendard Variable',
-                      fontWeight: FontWeight.w400,
-                      fontSize: 14,
-                      color: Colors.black,
-                    ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontFamily: 'Pretendard Variable',
+                    fontWeight: FontWeight.w400,
+                    fontSize: 14,
+                    color: Colors.black,
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    '재료',
-                    style: TextStyle(
-                      fontFamily: 'Pretendard Variable',
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      color: Color(0xFF003508),
-                    ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  '재료',
+                  style: TextStyle(
+                    fontFamily: 'Pretendard Variable',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: Color(0xFF003508),
                   ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          ingredients,
-                          softWrap: true,
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 2,
-                          style: const TextStyle(
-                            fontFamily: 'Pretendard Variable',
-                            fontWeight: FontWeight.w400,
-                            fontSize: 14,
-                            color: Color(0xFF003508),
-                          ),
-                        ),
-                      )
-                    ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  ingredients,
+                  softWrap: true,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
+                  style: const TextStyle(
+                    fontFamily: 'Pretendard Variable',
+                    fontWeight: FontWeight.w400,
+                    fontSize: 14,
+                    color: Color(0xFF003508),
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: const [
-                      Icon(Icons.access_time, size: 16, color: Color(0xFF003508)),
-                      SizedBox(width: 4),
-                      Text('25분', style: TextStyle(fontSize: 13, color: Color(0xFF003508))),
-                      SizedBox(width: 16),
-                      Icon(Icons.local_fire_department, size: 16, color: Color(0xFF003508)),
-                      SizedBox(width: 4),
-                      Text('350kcal', style: TextStyle(fontSize: 13, color: Color(0xFF003508))),
-                    ],
-                  )
-                ],
-              ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: const [
+                    Icon(Icons.access_time, size: 16, color: Color(0xFF003508)),
+                    SizedBox(width: 4),
+                    Text('25분', style: TextStyle(fontSize: 13, color: Color(0xFF003508))),
+                    SizedBox(width: 16),
+                    Icon(Icons.local_fire_department, size: 16, color: Color(0xFF003508)),
+                    SizedBox(width: 4),
+                    Text('350kcal', style: TextStyle(fontSize: 13, color: Color(0xFF003508))),
+                  ],
+                ),
+              ],
             ),
-          )
+          ),
         ],
       ),
     );
