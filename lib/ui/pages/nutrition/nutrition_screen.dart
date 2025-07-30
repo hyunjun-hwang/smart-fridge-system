@@ -196,7 +196,7 @@ class _NutritionContentState extends State<_NutritionContent> {
                         ),
                       ),
                       const SizedBox(width: 4),
-                      const Icon(Icons.arrow_circle_left_outlined, size: 18, color: _textColor),
+                      const Icon(Icons.arrow_circle_right_outlined, size: 18, color: _textColor),
                     ],
                   ),
                 ),
