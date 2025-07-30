@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:smart_fridge_system/providers/ndata/foodn_item.dart';
 
-
 class AddFoodScreen extends StatefulWidget {
   const AddFoodScreen({super.key});
 
@@ -17,12 +16,16 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
   final _carbController = TextEditingController();
   final _fatController = TextEditingController();
   final _proteinController = TextEditingController();
-  final _satFatController = TextEditingController();
-  final _transFatController = TextEditingController();
-  final _cholesterolController = TextEditingController();
-  final _sodiumController = TextEditingController();
-  final _calciumController = TextEditingController();
-  final _fiberController = TextEditingController();
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _calorieController.dispose();
+    _carbController.dispose();
+    _fatController.dispose();
+    _proteinController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,17 +41,11 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
           key: _formKey,
           child: ListView(
             children: [
-              _buildField('음식 이름', _nameController),
+              _buildField('음식 이름', _nameController, keyboardType: TextInputType.text),
               _buildField('1인분당 칼로리', _calorieController, suffix: 'kcal'),
               _buildField('총 탄수화물', _carbController, suffix: 'g'),
               _buildField('총 지방', _fatController, suffix: 'g'),
               _buildField('단백질', _proteinController, suffix: 'g'),
-              _buildField('포화지방', _satFatController, suffix: 'g'),
-              _buildField('트랜스지방', _transFatController, suffix: 'g'),
-              _buildField('콜레스테롤', _cholesterolController, suffix: 'mg'),
-              _buildField('나트륨', _sodiumController, suffix: 'mg'),
-              _buildField('칼슘', _calciumController, suffix: 'mg'),
-              _buildField('식이섬유', _fiberController, suffix: 'g'),
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () {
@@ -61,7 +58,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
                       protein: double.tryParse(_proteinController.text) ?? 0,
                       amount: 100,
                       count: 1,
-                      imagePath: 'https://cdn-icons-png.flaticon.com/512/1046/1046870.png',
+                      imagePath: '',
                     );
                     Navigator.pop(context, newFood);
                   }
@@ -81,7 +78,8 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
     );
   }
 
-  Widget _buildField(String label, TextEditingController controller, {String? suffix}) {
+  Widget _buildField(String label, TextEditingController controller,
+      {String? suffix, TextInputType keyboardType = const TextInputType.numberWithOptions(decimal: true)}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -93,7 +91,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
           Expanded(
             child: TextFormField(
               controller: controller,
-              keyboardType: TextInputType.numberWithOptions(decimal: true),
+              keyboardType: keyboardType,
               decoration: InputDecoration(
                 isDense: true,
                 suffixText: suffix,

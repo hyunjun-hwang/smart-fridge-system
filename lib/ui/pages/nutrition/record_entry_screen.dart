@@ -40,6 +40,7 @@ class _RecordEntryScreenState extends State<RecordEntryScreen> {
     final totalCarbs = foods.fold<double>(0, (sum, f) => sum + (f.carbohydrates * f.count));
     final totalProtein = foods.fold<double>(0, (sum, f) => sum + (f.protein * f.count));
     final totalFat = foods.fold<double>(0, (sum, f) => sum + (f.fat * f.count));
+    final targetCalories = provider.targetCalories;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF2F2F7),
@@ -93,7 +94,10 @@ class _RecordEntryScreenState extends State<RecordEntryScreen> {
                         style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),
                       ),
                       const TextSpan(text: 'kcal', style: TextStyle(fontSize: 16, color: Colors.black)),
-                      const TextSpan(text: ' /1800 kcal', style: TextStyle(fontSize: 16, color: Colors.grey)),
+                      TextSpan(
+                        text: ' / ${targetCalories.toStringAsFixed(0)} kcal',
+                        style: const TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
                     ],
                   ),
                 ),

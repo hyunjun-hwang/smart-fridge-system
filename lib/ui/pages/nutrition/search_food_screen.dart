@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:smart_fridge_system/data/models/food_item.dart';
 import 'package:smart_fridge_system/providers/daily_nutrition_provider.dart';
 import 'package:smart_fridge_system/providers/ndata/foodn_item.dart';
-import 'package:smart_fridge_system/ui/pages/nutrition/food_detail_dialog.dart';
 import 'package:smart_fridge_system/ui/pages/nutrition/record_entry_screen.dart';
 import 'package:smart_fridge_system/ui/pages/nutrition/addfood_screen.dart';
+import 'package:smart_fridge_system/ui/pages/nutrition/food_detail_dialog.dart';
 
 class SearchFoodScreen extends StatefulWidget {
   final String mealType;
@@ -22,51 +21,45 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
   final List<String> filters = ['검색', '즐겨찾기', '내 음식', '냉장고'];
   final TextEditingController _searchController = TextEditingController();
 
-  List<FoodItem> recentSearches = [
-    FoodItem(
-      name: '사과',
-      quantity: 2,
-      unit: Unit.count,
-      expiryDate: DateTime(2025, 8, 15),
-      stockedDate: DateTime(2025, 7, 24),
-      imageUrl: 'https://cdn-icons-png.flaticon.com/512/415/415682.png',
-      category: '과일',
-      storage: StorageType.fridge,
-    ),
-  ];
+  List<FoodItemn> recentSearches = [];
+  List<FoodItemn> myFoods = [];
+  List<FoodItemn> favoriteItems = [];
+  List<FoodItemn> fridgeItems = [];
 
-  List<FoodItem> favoriteItems = [];
-
-  List<FoodItem> fridgeItems = [
-    FoodItem(
-      name: '사과',
-      quantity: 2,
-      unit: Unit.count,
-      expiryDate: DateTime(2025, 8, 15),
-      stockedDate: DateTime(2025, 7, 24),
-      imageUrl: 'https://cdn-icons-png.flaticon.com/512/415/415682.png',
-      category: '과일',
-      storage: StorageType.fridge,
-    ),
-    FoodItem(
-      name: '우유',
-      quantity: 1,
-      unit: Unit.count,
-      expiryDate: DateTime(2025, 8, 2),
-      stockedDate: DateTime(2025, 7, 25),
-      imageUrl: 'https://cdn-icons-png.flaticon.com/512/1046/1046870.png',
-      category: '유제품',
-      storage: StorageType.fridge,
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    recentSearches = [
+      FoodItemn(
+        name: '사과',
+        calories: 52,
+        carbohydrates: 14.0,
+        protein: 0.3,
+        fat: 0.2,
+        amount: 100,
+        count: 1.0,
+        imagePath: 'https://cdn-icons-png.flaticon.com/512/415/415682.png',
+      ),
+    ];
+    fridgeItems = [
+      FoodItemn(
+        name: '우유',
+        calories: 42,
+        carbohydrates: 5.0,
+        protein: 3.4,
+        fat: 1.0,
+        amount: 100,
+        count: 1.0,
+        imagePath: 'https://cdn-icons-png.flaticon.com/512/1046/1046870.png',
+      ),
+    ];
+  }
 
   void _addFoodAndReturn(FoodItemn food) {
     final provider = Provider.of<DailyNutritionProvider>(context, listen: false);
     provider.addFood(widget.mealType, widget.date, food);
 
-    Navigator.pop(context); // 모달 닫기
-
-    Navigator.push(
+    Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (_) => RecordEntryScreen(
@@ -165,18 +158,8 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
                         );
                         if (newFood != null) {
                           setState(() {
-                            recentSearches.add(
-                              FoodItem(
-                                name: newFood.name,
-                                quantity: newFood.count.toInt(),
-                                unit: Unit.count,
-                                expiryDate: DateTime.now().add(const Duration(days: 7)),
-                                stockedDate: DateTime.now(),
-                                imageUrl: newFood.imagePath,
-                                category: '기타',
-                                storage: StorageType.fridge,
-                              ),
-                            );
+                            myFoods.add(newFood);
+                            recentSearches.add(newFood);
                           });
                         }
                       },
@@ -202,15 +185,11 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
           Expanded(
             child: Builder(
               builder: (_) {
-                if (selectedIndex == 0) {
-                  return _buildFoodList(recentSearches);
-                } else if (selectedIndex == 1) {
-                  return _buildFoodList(favoriteItems);
-                } else if (selectedIndex == 3) {
-                  return _buildFoodList(fridgeItems);
-                } else {
-                  return const Center(child: Text('최근에 추가한 항목이 없습니다.', style: TextStyle(color: Colors.grey)));
-                }
+                if (selectedIndex == 0) return _buildFoodList(recentSearches);
+                if (selectedIndex == 1) return _buildFoodList(favoriteItems);
+                if (selectedIndex == 2) return _buildFoodList(myFoods);
+                if (selectedIndex == 3) return _buildFoodList(fridgeItems);
+                return const Center(child: Text('항목이 없습니다.', style: TextStyle(color: Colors.grey)));
               },
             ),
           ),
@@ -219,7 +198,7 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
     );
   }
 
-  Widget _buildFoodList(List<FoodItem> items) {
+  Widget _buildFoodList(List<FoodItemn> items) {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       itemCount: items.length,
@@ -242,9 +221,9 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
           ),
           child: ListTile(
             contentPadding: const EdgeInsets.all(12),
-            leading: Image.network(item.imageUrl, width: 48, height: 48),
+            leading: Image.network(item.imagePath, width: 48, height: 48),
             title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('수량: ${item.quantity}${item.unit == Unit.count ? '개' : 'g'}'),
+            subtitle: Text('열량: ${item.calories.toStringAsFixed(1)} kcal'),
             trailing: IconButton(
               icon: Icon(
                 isFavorite ? Icons.star : Icons.star_border,
@@ -261,20 +240,9 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
               },
             ),
             onTap: () {
-              final foodItemn = FoodItemn(
-                name: item.name,
-                calories: 104,
-                carbohydrates: 27.6,
-                protein: 0.6,
-                fat: 0.4,
-                amount: 200,
-                count: 1.0,
-                imagePath: item.imageUrl,
-              );
-
               showFoodDetailDialog(
                 context: context,
-                item: foodItemn,
+                item: item,
                 onAdd: _addFoodAndReturn,
               );
             },

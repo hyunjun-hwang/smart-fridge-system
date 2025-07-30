@@ -8,7 +8,7 @@ import 'package:smart_fridge_system/ui/pages/nutrition/nutrition_screen.dart';
 import 'package:smart_fridge_system/ui/pages/refrigerator/add_food_item_dialog.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_fridge_system/providers/daily_nutrition_provider.dart';
-
+import 'package:smart_fridge_system/ui/pages/profile/profile_screen.dart';
 class BottomNav extends StatefulWidget {
   const BottomNav({super.key});
 
@@ -25,7 +25,7 @@ class _BottomNavState extends State<BottomNav> {
     FridgePage(),
     RecipeMainPage(),
     NutritionScreen(),
-    Center(child: Text('프로필 페이지')),
+    ProfileScreen(),
   ];
 
   void _onItemTapped(int index) {

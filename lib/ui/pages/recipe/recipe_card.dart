@@ -35,9 +35,22 @@ class RecipeCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Image.asset(imagePath, height: 150, fit: BoxFit.cover),
+              SizedBox(
+                width: double.infinity,
+                height: 150,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.asset(
+                    imagePath,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
               const SizedBox(height: 8),
-              Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text(
+                title,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               Text(subtitle),
               const SizedBox(height: 8),
               Wrap(
@@ -47,7 +60,8 @@ class RecipeCard extends StatelessWidget {
                   final hasIngredient = ownedIngredients.any((own) => ingredient.contains(own));
                   return Chip(
                     label: Text(ingredient),
-                    backgroundColor: hasIngredient ? Colors.blue[100] : Colors.red[100],
+                    backgroundColor:
+                    hasIngredient ? Colors.blue[100] : Colors.red[100],
                     labelStyle: TextStyle(
                       color: hasIngredient ? Colors.blue[800] : Colors.red[800],
                       fontWeight: FontWeight.w500,
