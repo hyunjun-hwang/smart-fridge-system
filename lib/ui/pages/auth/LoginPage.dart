@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:smart_fridge_system/constants/app_colors.dart';
 import 'package:smart_fridge_system/ui/pages/auth/FindAuthInfoPage.dart';
+import 'package:smart_fridge_system/ui/widgets/bottom_nav.dart';
 import 'package:smart_fridge_system/ui/widgets/primary_button.dart';
 import 'package:smart_fridge_system/ui/widgets/custom_text_field.dart';
 import 'package:smart_fridge_system/ui/pages/auth/signup_page.dart';
@@ -56,7 +57,7 @@ class LoginPage extends StatelessWidget {
                   onPressed: () { Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => const HomePage()),
+                          builder: (context) => const BottomNav()),
                       );
                       },
                 ),

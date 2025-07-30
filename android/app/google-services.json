@@ -1,10 +1,49 @@
 {
   "project_info": {
     "project_number": "963527481049",
+    "firebase_url": "https://example-9dc4e-default-rtdb.firebaseio.com",
     "project_id": "example-9dc4e",
     "storage_bucket": "example-9dc4e.firebasestorage.app"
   },
   "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:963527481049:android:0ed8408c32b4bfe6c8d0c8",
+        "android_client_info": {
+          "package_name": "com.example.personalitytest"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBhBz8AH4Ib5cHSzE0dBUvrhbBSC-5fg4Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:963527481049:android:98bf50e21f109875c8d0c8",
+        "android_client_info": {
+          "package_name": "com.example.smart_fridge_system"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBhBz8AH4Ib5cHSzE0dBUvrhbBSC-5fg4Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
     {
       "client_info": {
         "mobilesdk_app_id": "1:963527481049:android:1ad6fd9db15c14b2c8d0c8",
