@@ -1,7 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:smart_fridge_system/data/models/recipe_model.dart';
 
-class RecipeDetailPage extends StatelessWidget {
-  const RecipeDetailPage({super.key});
+class RecipeDetailPage extends StatefulWidget {
+  final Recipe recipe;
+
+  const RecipeDetailPage({super.key, required this.recipe});
+
+  @override
+  State<RecipeDetailPage> createState() => _RecipeDetailPageState();
+}
+
+class _RecipeDetailPageState extends State<RecipeDetailPage> {
+  String selectedMeal = '아침';
 
   @override
   Widget build(BuildContext context) {
@@ -10,18 +20,18 @@ class RecipeDetailPage extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            const _TopBar(),
+            _TopBar(),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    _RecipeHeader(),
-                    SizedBox(height: 24),
-                    _Ingredients(),
-                    SizedBox(height: 24),
-                    _RecipeSteps(),
+                  children: [
+                    _RecipeHeader(recipe: widget.recipe),
+                    const SizedBox(height: 24),
+                    _Ingredients(recipe: widget.recipe),
+                    const SizedBox(height: 24),
+                    _RecipeSteps(recipe: widget.recipe),
                   ],
                 ),
               ),
@@ -36,8 +46,139 @@ class RecipeDetailPage extends StatelessWidget {
           width: double.infinity,
           child: ElevatedButton(
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('추가되었습니다!')),
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                builder: (context) {
+                  String tempSelectedMeal = selectedMeal;
+                  final meals = [
+                    {'label': '아침', 'kcal': '100kcal'},
+                    {'label': '점심', 'kcal': '0kcal'},
+                    {'label': '저녁', 'kcal': '0kcal'},
+                    {'label': '아침 간식', 'kcal': '0kcal'},
+                    {'label': '점심 간식', 'kcal': '0kcal'},
+                    {'label': '저녁 간식', 'kcal': '0kcal'},
+                  ];
+
+                  return StatefulBuilder(
+                    builder: (context, setState) {
+                      return Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          20,
+                          20,
+                          20,
+                          MediaQuery.of(context).viewInsets.bottom + 20,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              '식단 추가',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF003508),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Wrap(
+                              spacing: 20,
+                              runSpacing: 16,
+                              alignment: WrapAlignment.center,
+                              children: meals.map((meal) {
+                                final label = meal['label']!;
+                                final kcal = meal['kcal']!;
+                                final isSelected = tempSelectedMeal == label;
+
+                                return GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      tempSelectedMeal = label;
+                                    });
+                                  },
+                                  child: Container(
+                                    width: 96,
+                                    height: 72,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF5F8F0),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? const Color(0xFF003508)
+                                            : const Color(0xFFD6E2C0),
+                                        width: isSelected ? 2 : 1,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          label,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF003508),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          kcal,
+                                          style: TextStyle(
+                                            fontWeight: isSelected
+                                                ? FontWeight.bold
+                                                : FontWeight.normal,
+                                            fontSize: 14,
+                                            color: isSelected
+                                                ? const Color(0xFF003508)
+                                                : Colors.grey,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                            const SizedBox(height: 24),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 50,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  setState(() {
+                                    selectedMeal = tempSelectedMeal;
+                                  });
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('$selectedMeal에 추가되었습니다!'),
+                                    ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFD6E2C0),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                                child: const Text(
+                                  '추가하기',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF003508),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
               );
             },
             style: ElevatedButton.styleFrom(
@@ -62,7 +203,7 @@ class RecipeDetailPage extends StatelessWidget {
   }
 }
 
-class _TopBar extends StatelessWidget {
+              class _TopBar extends StatelessWidget {
   const _TopBar();
 
   @override
@@ -93,7 +234,8 @@ class _TopBar extends StatelessWidget {
 }
 
 class _RecipeHeader extends StatelessWidget {
-  const _RecipeHeader();
+  final Recipe recipe;
+  const _RecipeHeader({required this.recipe});
 
   @override
   Widget build(BuildContext context) {
@@ -103,7 +245,7 @@ class _RecipeHeader extends StatelessWidget {
         ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: Image.asset(
-            'assets/images/avocado_salad.jpg',
+            recipe.imagePath,
             width: 150,
             height: 200,
             fit: BoxFit.cover,
@@ -114,9 +256,9 @@ class _RecipeHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                '아보카도 샐러드',
-                style: TextStyle(
+              Text(
+                recipe.title,
+                style: const TextStyle(
                   fontFamily: 'Pretendard Variable',
                   fontWeight: FontWeight.w700,
                   fontSize: 20,
@@ -124,15 +266,15 @@ class _RecipeHeader extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 6),
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.access_time, size: 18, color: Color(0xFF003508)),
-                  SizedBox(width: 4),
-                  Text('25분', style: TextStyle(color: Color(0xFF003508))),
-                  SizedBox(width: 12),
-                  Icon(Icons.local_fire_department, size: 18, color: Color(0xFF003508)),
-                  SizedBox(width: 4),
-                  Text('350kcal', style: TextStyle(color: Color(0xFF003508))),
+                  const Icon(Icons.access_time, size: 18, color: Color(0xFF003508)),
+                  const SizedBox(width: 4),
+                  Text('${recipe.time}분', style: const TextStyle(color: Color(0xFF003508))),
+                  const SizedBox(width: 12),
+                  const Icon(Icons.local_fire_department, size: 18, color: Color(0xFF003508)),
+                  const SizedBox(width: 4),
+                  Text('${recipe.kcal}kcal', style: const TextStyle(color: Color(0xFF003508))),
                 ],
               ),
               const SizedBox(height: 16),
@@ -144,14 +286,14 @@ class _RecipeHeader extends StatelessWidget {
                 clipBehavior: Clip.hardEdge,
                 child: Row(
                   children: [
-                    Expanded(flex: 183, child: Container(color: Color(0xFFD0E7FF))),
-                    Expanded(flex: 154, child: Container(color: Color(0xFFD6ECC9))),
-                    Expanded(flex: 50, child: Container(color: Color(0xFFBFD9D2))),
+                    Expanded(flex: recipe.carb.round(), child: Container(color: const Color(0xFFD0E7FF))),
+                    Expanded(flex: recipe.protein.round(), child: Container(color: const Color(0xFFD6ECC9))),
+                    Expanded(flex: recipe.fat.round(), child: Container(color: const Color(0xFFBFD9D2))),
                   ],
                 ),
               ),
               const SizedBox(height: 12),
-              const _NutrientRow(),
+              _NutrientRow(recipe: recipe),
             ],
           ),
         ),
@@ -161,15 +303,16 @@ class _RecipeHeader extends StatelessWidget {
 }
 
 class _NutrientRow extends StatelessWidget {
-  const _NutrientRow();
+  final Recipe recipe;
+  const _NutrientRow({required this.recipe});
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      children: const [
-        _NutrientItem('탄수화물', '183.5g', Color(0xFFD0E7FF)),
-        _NutrientItem('단백질', '154g', Color(0xFFD6ECC9)),
-        _NutrientItem('지방', '50g', Color(0xFFBFD9D2)),
+      children: [
+        _NutrientItem('탄수화물', '${recipe.carb}g', const Color(0xFFD0E7FF)),
+        _NutrientItem('단백질', '${recipe.protein}g', const Color(0xFFD6ECC9)),
+        _NutrientItem('지방', '${recipe.fat}g', const Color(0xFFBFD9D2)),
       ],
     );
   }
@@ -215,19 +358,11 @@ class _NutrientItem extends StatelessWidget {
 }
 
 class _Ingredients extends StatelessWidget {
-  const _Ingredients();
+  final Recipe recipe;
+  const _Ingredients({required this.recipe});
 
   @override
   Widget build(BuildContext context) {
-    final List<Map<String, bool>> ingredients = [
-      {'아보카도 3개': true},
-      {'바나나 1개': true},
-      {'골드키위': false},
-      {'로메인': false},
-      {'발사믹 글레이즈': true},
-      {'후춧가루': true},
-    ];
-
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -260,15 +395,12 @@ class _Ingredients extends StatelessWidget {
           Wrap(
             spacing: 40,
             runSpacing: 16,
-            children: ingredients.map((item) {
-              final name = item.keys.first;
-              final hasItem = item[name]!;
-
+            children: recipe.ingredients.entries.map((entry) {
               return Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    name,
+                    entry.key,
                     style: const TextStyle(
                       fontSize: 15,
                       fontFamily: 'Pretendard Variable',
@@ -277,9 +409,9 @@ class _Ingredients extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   Icon(
-                    hasItem ? Icons.check : Icons.clear,
+                    entry.value ? Icons.check : Icons.clear,
                     size: 20,
-                    color: hasItem ? const Color(0xFFC7DDB3) : const Color(0xFFFF8C7C),
+                    color: entry.value ? const Color(0xFFC7DDB3) : const Color(0xFFFF8C7C),
                   ),
                 ],
               );
@@ -292,18 +424,11 @@ class _Ingredients extends StatelessWidget {
 }
 
 class _RecipeSteps extends StatelessWidget {
-  const _RecipeSteps();
+  final Recipe recipe;
+  const _RecipeSteps({required this.recipe});
 
   @override
   Widget build(BuildContext context) {
-    final steps = [
-      '블루베리를 제외한 모든 과일과 로메인은 비슷한 크기로 썰어준다',
-      '접시에 로메인을 먼저 깔아준다',
-      '아보카도와 과일을 골고루 뿌리듯 올려준다',
-      '리코타치즈를 떠서 올려주고 올리브오일을 골고루 뿌린 후 소금과 후춧가루를 뿌려준다',
-      '마지막에 발사믹소스를 뿌려준다',
-    ];
-
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(top: 12),
@@ -313,7 +438,7 @@ class _RecipeSteps extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
-              border: Border.all(color: Color(0xFFD6E2C0)),
+              border: Border.all(color: const Color(0xFFD6E2C0)),
               borderRadius: BorderRadius.circular(20),
               color: Colors.white,
             ),
@@ -329,7 +454,7 @@ class _RecipeSteps extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Column(
-            children: steps.asMap().entries.map((entry) {
+            children: recipe.steps.asMap().entries.map((entry) {
               final index = entry.key;
               final step = entry.value;
 
@@ -342,7 +467,7 @@ class _RecipeSteps extends StatelessWidget {
                       width: 26,
                       height: 26,
                       decoration: BoxDecoration(
-                        border: Border.all(color: Color(0xFFBFD9D2)),
+                        border: Border.all(color: const Color(0xFFBFD9D2)),
                         shape: BoxShape.circle,
                       ),
                       alignment: Alignment.center,
@@ -371,6 +496,149 @@ class _RecipeSteps extends StatelessWidget {
               );
             }).toList(),
           ),
+        ],
+      ),
+    );
+  }
+}
+class _MealChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final String kcal;
+
+  const _MealChip({
+    required this.label,
+    required this.isSelected,
+    required this.kcal,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 90,
+      height: 70,
+      decoration: BoxDecoration(
+        color: isSelected ? const Color(0xFFE8F1DB) : const Color(0xFFF5F8F0),
+        border: Border.all(
+          color: isSelected ? const Color(0xFF003508) : const Color(0xFFD6E2C0),
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: isSelected ? const Color(0xFF003508) : Colors.grey,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            kcal,
+            style: TextStyle(
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+              color: isSelected ? const Color(0xFF003508) : Colors.grey,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class MealSelectBottomSheet extends StatelessWidget {
+  final String selectedMeal;
+  final void Function(String) onSelect;
+  final VoidCallback onConfirm;
+
+  const MealSelectBottomSheet({
+    super.key,
+    required this.selectedMeal,
+    required this.onSelect,
+    required this.onConfirm,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final meals = ['아침', '점심', '저녁', '아침 간식', '점심 간식', '저녁 간식'];
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            '식단 추가',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF003508)),
+          ),
+          const SizedBox(height: 20),
+          GridView.count(
+            crossAxisCount: 3,
+            shrinkWrap: true,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 1.4,
+            physics: const NeverScrollableScrollPhysics(),
+            children: meals.map((meal) {
+              final isSelected = selectedMeal == meal;
+              return GestureDetector(
+                onTap: () => onSelect(meal),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0F4E3),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected ? const Color(0xFF003508) : const Color(0xFFD6E2C0),
+                      width: isSelected ? 2 : 1,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        meal,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: isSelected ? const Color(0xFF003508) : Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        isSelected ? '100kcal' : '0kcal',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: isSelected ? const Color(0xFF003508) : Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: onConfirm,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFD6E2C0),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              child: const Text(
+                '추가하기',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF003508),
+                ),
+              ),
+            ),
+          )
         ],
       ),
     );

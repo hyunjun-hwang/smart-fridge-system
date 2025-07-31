@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:smart_fridge_system/data/models/recipe_model.dart';
 import 'recipe_detail_page.dart';
 
 class RecipeMainPage extends StatefulWidget {
@@ -12,10 +13,62 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
   final TextEditingController _searchController = TextEditingController();
   String _sortOption = '추천 레시피 순';
 
+  final List<Recipe> recipes = [
+    Recipe(
+      title: '아보카도 샐러드',
+      description: '아보카도로 만든 샐러드',
+      imagePath: 'assets/images/avocado_salad.jpg',
+      time: 25,
+      kcal: 350,
+      carb: 183.5,
+      protein: 154,
+      fat: 50,
+      ingredients: {
+        '아보카도 3개': true,
+        '바나나 1개': true,
+        '골드키위': false,
+        '로메인': false,
+        '발사믹 글레이즈': true,
+        '후춧가루': true,
+      },
+      steps: [
+        '블루베리를 제외한 모든 과일과 로메인은 비슷한 크기로 썰어준다',
+        '접시에 로메인을 먼저 깔아준다',
+        '아보카도와 과일을 골고루 뿌리듯 올려준다',
+        '리코타치즈를 떠서 올려주고 올리브오일을 골고루 뿌린 후 소금과 후춧가루를 뿌려준다',
+        '마지막에 발사믹소스를 뿌려준다',
+      ],
+    ),
+    Recipe(
+      title: '바나나 팬케이크',
+      description: '아이들이 좋아하는 팬케이크',
+      imagePath: 'assets/images/banana_pancake.jpg',
+      time: 20,
+      kcal: 320,
+      carb: 90,
+      protein: 60,
+      fat: 40,
+      ingredients: {'바나나 2개': true, '핫케이크 믹스': true},
+      steps: ['재료를 섞고 굽는다'],
+    ),
+    Recipe(
+      title: '샐러드',
+      description: '다이어트용',
+      imagePath: 'assets/images/salad_diet.jpg',
+      time: 15,
+      kcal: 200,
+      carb: 60,
+      protein: 30,
+      fat: 10,
+      ingredients: {'상추': true, '파스타': false},
+      steps: ['재료를 섞는다'],
+    ),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // ✅ 완전 흰 배경
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
@@ -112,36 +165,28 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
             ),
             const SizedBox(height: 8),
             Expanded(
-              child: ListView(
+              child: ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                children: [
-                  GestureDetector(
+                itemCount: recipes.length,
+                itemBuilder: (context, index) {
+                  final recipe = recipes[index];
+                  return GestureDetector(
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const RecipeDetailPage()),
+                        MaterialPageRoute(
+                          builder: (context) => RecipeDetailPage(recipe: recipe),
+                        ),
                       );
                     },
-                    child: const RecipeCard(
-                      imagePath: 'assets/images/avocado_salad.jpg',
-                      title: '아보카도 샐러드',
-                      subtitle: '아보카도로 만든 샐러드',
-                      ingredients: '아보카도 1개, 바나나 1개, 방울토마토 5개, 젓가락, 피망 1개, 양상추...',
+                    child: RecipeCard(
+                      imagePath: recipe.imagePath,
+                      title: recipe.title,
+                      subtitle: recipe.description,
+                      ingredients: recipe.ingredients.keys.join(', '),
                     ),
-                  ),
-                  const RecipeCard(
-                    imagePath: 'assets/images/banana_pancake.jpg',
-                    title: '바나나 팬케이크',
-                    subtitle: '아이들이 좋아하는 팬케이크',
-                    ingredients: '바나나 2~4개, 핫케이크 믹스 300g, 블루베리 50g, 설탕, 시럽...',
-                  ),
-                  const RecipeCard(
-                    imagePath: 'assets/images/salad_diet.jpg',
-                    title: '샐러드',
-                    subtitle: '다이어트용',
-                    ingredients: '방울토마토 4개, 파스타, 상추, 배추, 양배추',
-                  ),
-                ],
+                  );
+                },
               ),
             ),
           ],
@@ -175,7 +220,7 @@ class RecipeCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: const Color(0xFF000000).withAlpha(13),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
