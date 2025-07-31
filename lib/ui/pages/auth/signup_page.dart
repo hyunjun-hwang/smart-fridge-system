@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart'; // 날짜 포맷을 위해 intl 패키지 임포트
 import 'package:smart_fridge_system/constants/app_colors.dart';
 import 'package:smart_fridge_system/ui/widgets/custom_text_field.dart';
 import 'package:smart_fridge_system/ui/widgets/primary_button.dart';
-import 'package:smart_fridge_system/ui/widgets/small_primary_button.dart'; // ## 1. 새로 만든 버튼 임포트
+import 'package:smart_fridge_system/ui/widgets/small_primary_button.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -14,7 +15,6 @@ class SignUpPage extends StatefulWidget {
 }
 
 class _SignUpPageState extends State<SignUpPage> {
-  // ... (State 변수들과 함수들은 이전과 동일)
   final List<bool> _genderSelection = [false, true];
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -36,7 +36,41 @@ class _SignUpPageState extends State<SignUpPage> {
     super.dispose();
   }
 
+  // ## 1. [변경점] 달력을 띄우고 날짜를 선택하는 함수 추가
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(), // 초기 선택 날짜
+      firstDate: DateTime(1900),   // 선택 가능한 가장 이른 날짜
+      lastDate: DateTime.now(),    // 선택 가능한 가장 늦은 날짜
+      builder: (context, child) { // 달력 테마 설정 (선택 사항)
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary, // 헤더 배경색
+              onPrimary: Colors.white, // 헤더 글자색
+              onSurface: Colors.black, // 본문 글자색
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primary, // 버튼 글자색
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        // 선택된 날짜를 'yyyy-MM-dd' 형식으로 변환하여 컨트롤러에 설정
+        _dobController.text = DateFormat('yyyy-MM-dd').format(picked);
+      });
+    }
+  }
+
   Future<void> _checkUsername() async {
+    // ... (기존과 동일)
     final String username = _usernameController.text.trim();
     if (username.isEmpty) {
       setState(() {
@@ -64,6 +98,7 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   Future<void> _signUp() async {
+    // ... (기존과 동일)
     if (_usernameController.text.trim().isEmpty ||
         _emailController.text.trim().isEmpty ||
         _passwordController.text.trim().isEmpty ||
@@ -109,7 +144,7 @@ class _SignUpPageState extends State<SignUpPage> {
           'id': _usernameController.text.trim(),
           'email': _emailController.text.trim(),
           'dob': _dobController.text.trim(),
-          'gender': _genderSelection[0] ? '남' : '여',
+          'gender': _genderSelection[0] ? '남성' : '여성',
           'createdAt': Timestamp.now(),
         };
         await FirebaseFirestore.instance
@@ -155,7 +190,6 @@ class _SignUpPageState extends State<SignUpPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        // ... (AppBar는 이전과 동일)
         backgroundColor: Colors.white,
         elevation: 0,
         leading: const BackButton(color: Colors.black),
@@ -168,7 +202,6 @@ class _SignUpPageState extends State<SignUpPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // ... (로고, 타이틀 등은 이전과 동일)
                 SizedBox(
                   height: 100,
                   child: Image.asset('assets/images/logo.png'),
@@ -184,7 +217,6 @@ class _SignUpPageState extends State<SignUpPage> {
                   ),
                 ),
                 const SizedBox(height: 40),
-
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -196,16 +228,12 @@ class _SignUpPageState extends State<SignUpPage> {
                       ),
                     ),
                     const Spacer(),
-
-                    // ## 2. 기존 ElevatedButton을 새로 만든 SmallPrimaryButton으로 교체
                     SmallPrimaryButton(
                       text: '중복확인',
                       onPressed: _checkUsername,
                     ),
                   ],
                 ),
-
-                // ... (이하 나머지 UI 코드는 이전과 동일)
                 if (_usernameCheckMessage != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 8.0, left: 8.0),
@@ -241,12 +269,38 @@ class _SignUpPageState extends State<SignUpPage> {
                 const SizedBox(height: 15),
                 Row(
                   children: [
+                    // ## 2. [변경점] 생년월일 필드를 TextFormField로 변경
                     SizedBox(
                       width: screenWidth * 0.8 * 0.6,
-                      child: CustomTextField(
+                      child: TextFormField(
                         controller: _dobController,
-                        hintText: '생년월일',
-                        keyboardType: TextInputType.datetime,
+                        readOnly: true, // 키보드 입력 방지
+                        decoration: InputDecoration(
+                          hintText: '생년월일',
+                          suffixIcon: Icon(
+                            Icons.calendar_month_outlined,
+                            color: AppColors.textSecondary,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                              vertical: 15, horizontal: 15),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey.shade400),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey.shade400),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide:
+                            const BorderSide(color: AppColors.primary),
+                          ),
+                        ),
+                        onTap: () {
+                          // 텍스트 필드를 탭하면 달력 표시
+                          _selectDate(context);
+                        },
                       ),
                     ),
                     const Spacer(),
@@ -254,9 +308,7 @@ class _SignUpPageState extends State<SignUpPage> {
                       isSelected: _genderSelection,
                       onPressed: (int index) {
                         setState(() {
-                          for (int i = 0;
-                          i < _genderSelection.length;
-                          i++) {
+                          for (int i = 0; i < _genderSelection.length; i++) {
                             _genderSelection[i] = i == index;
                           }
                         });
@@ -273,11 +325,11 @@ class _SignUpPageState extends State<SignUpPage> {
                       children: const [
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 10),
-                          child: Text('남'),
+                          child: Text('남성'),
                         ),
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 10),
-                          child: Text('여'),
+                          child: Text('여성'),
                         ),
                       ],
                     ),
