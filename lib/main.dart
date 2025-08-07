@@ -1,3 +1,5 @@
+// FILE: lib/main.dart
+
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:smart_fridge_system/data/models/food_item.dart';
@@ -15,16 +17,13 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-
   await Hive.initFlutter();
 
-  // --- Hive 어댑터 등록 추가 ---
-  // Hive가 FoodItem 객체를 이해할 수 있도록 어댑터를 등록합니다.
+  // Hive 어댑터 등록
   Hive.registerAdapter(FoodItemAdapter());
   Hive.registerAdapter(FoodCategoryAdapter());
   Hive.registerAdapter(StorageTypeAdapter());
   Hive.registerAdapter(UnitAdapter());
-  // --- Hive 어댑터 등록 추가 끝 ---
 
   runApp(const MyApp());
 }
@@ -40,6 +39,10 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => FoodProvider()),
       ],
       child: MaterialApp(
+        title: 'Smart Fridge System', // Jieun 브랜치의 title 추가
+        theme: ThemeData( // Jieun 브랜치의 theme 추가
+          primarySwatch: Colors.blue,
+        ),
         home: StreamBuilder<User?>(
           stream: FirebaseAuth.instance.authStateChanges(),
           builder: (context, snapshot) {

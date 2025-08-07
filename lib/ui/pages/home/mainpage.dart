@@ -1,9 +1,14 @@
+// FILE: lib/ui/pages/home/mainpage.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:smart_fridge_system/constants/app_constants.dart';
 import 'package:smart_fridge_system/ui/pages/home/temperature_control_modal.dart';
 import 'package:smart_fridge_system/ui/pages/home/notification_modal.dart';
 import 'package:smart_fridge_system/ui/pages/home/shopping_list_modal.dart';
+import 'package:smart_fridge_system/ui/widgets/bottom_nav.dart';
+import 'package:smart_fridge_system/data/repositories/food_repository.dart';
+import 'package:smart_fridge_system/data/models/food_item.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -17,10 +22,35 @@ class _HomePageState extends State<HomePage> {
   double _freezerTemp = -18.0;
   double _freezerHumidity = 75.0;
   String _freezerGasStatus = "점검 필요";
-
   double _fridgeTemp = 3.0;
   double _fridgeHumidity = 60.0;
   String _fridgeGasStatus = "정상";
+
+  // FoodRepository를 통해 가져온 식품 목록
+  List<FoodItem> _foodItems = [];
+  bool _isLoading = true;
+
+  // 장보기 목록 상태 변수 추가
+  List<ShoppingItem> _shoppingItems = [
+    ShoppingItem(id: 0, name: '복숭아', isChecked: true),
+    ShoppingItem(id: 1, name: '옥수수', isChecked: false),
+    ShoppingItem(id: 2, name: '수박', isChecked: false),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchFoodItems();
+  }
+
+  Future<void> _fetchFoodItems() async {
+    final foodRepository = FoodRepository();
+    final items = await foodRepository.getFoodItems();
+    setState(() {
+      _foodItems = items;
+      _isLoading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -89,15 +119,10 @@ class _HomePageState extends State<HomePage> {
                 minTemp: -25,
                 maxTemp: -15,
                 initialHumidity: _freezerHumidity,
+                gasStatus: _freezerGasStatus,
+                iceMakerMinutes: 15,
                 onTempChanged: (val) => setState(() => _freezerTemp = val),
                 onHumidityChanged: (val) => setState(() => _freezerHumidity = val),
-                extraContent: Column(
-                  children: const [
-                    Text("가스 상태: 점검 필요", style: TextStyle(color: kWarningColor)),
-                    SizedBox(height: kItemSpacing),
-                    Text("얼음 완성까지 15분", style: TextStyle(fontWeight: FontWeight.w500)),
-                  ],
-                ),
               ),
             ),
             child: _buildFridgeCard(
@@ -119,9 +144,9 @@ class _HomePageState extends State<HomePage> {
                 minTemp: 0,
                 maxTemp: 6,
                 initialHumidity: _fridgeHumidity,
+                gasStatus: _fridgeGasStatus,
                 onTempChanged: (val) => setState(() => _fridgeTemp = val),
                 onHumidityChanged: (val) => setState(() => _fridgeHumidity = val),
-                extraContent: const Text("가스 상태: 정상", style: kCardTitleTextStyle),
               ),
             ),
             child: _buildFridgeCard(
@@ -183,13 +208,11 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ),
-
         ],
       ),
     );
   }
 
-  // --- 기타 섹션 (유통기한 임박 식품, 장보기 목록, 영양 요약) ---
   Widget _buildExpiringAndShoppingList(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(kCardPadding),
@@ -214,34 +237,42 @@ class _HomePageState extends State<HomePage> {
                   alignment: Alignment.center,
                   child: const Text('유통기한 임박 식품', style: kCardTitleTextStyle),
                 ),
-                const SizedBox(height: 15),
-                _expiringFoodItem('마늘', 'D-100'),
-                const SizedBox(height: 8),
-                _expiringFoodItem('상추', 'D-3'),
                 const SizedBox(height: 20),
+                // [수정] _isLoading 상태에 따라 로딩 인디케이터 또는 데이터를 표시
+                _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: _buildExpiringFoodItems(),
+                ),
+                const SizedBox(height: 10),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        (bottomNavKey.currentState as dynamic)?.onItemTapped(1);
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFC5D6A3),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
                         minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap, // 터치 영역 축소
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       child: const Text('냉장고 확인하기', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                     ),
-                    const SizedBox(height: 8), // 간격 조절
+                    const SizedBox(height: 10),
                     ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        (bottomNavKey.currentState as dynamic)?.onItemTapped(2);
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFC5D6A3),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
                         minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap, // 터치 영역 축소
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       child: const Text('추천요리', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                     ),
@@ -267,19 +298,49 @@ class _HomePageState extends State<HomePage> {
                   child: const Text('장보기 목록', style: kCardTitleTextStyle),
                 ),
                 const SizedBox(height: 10),
-                _shoppingItem('복숭아', checked: true),
-                _shoppingItem('옥수수'),
-                _shoppingItem('...'),
-                TextButton(
-                  onPressed: () => _showAppModal(context, const ShoppingListModal(initialItems: ['복숭아', '옥수수', '수박']), isScrollControlled: true),
-                  child: const Text('전체보기', style: TextStyle(color: kGreyColor)),
-                ),
+                // 수정된 장보기 목록을 표시
+                ..._shoppingItems.take(3).map((item) => _shoppingItem(item.name, checked: item.isChecked)).toList(),
+                if (_shoppingItems.length > 2)
+                  TextButton(
+                    onPressed: () {
+                      _showAppModal(
+                        context,
+                        ShoppingListModal(initialItems: _shoppingItems.map((e) => e.name).toList()),
+                        isScrollControlled: true,
+                      );
+                    },
+                    child: const Text('전체보기', style: TextStyle(color: kGreyColor)),
+                  ),
+                if (_shoppingItems.isEmpty)
+                  const Text('장보기 목록이 없습니다.', style: TextStyle(color: kGreyColor)),
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  // [수정] 유통기한 필터링 없이 전체 목록 중 유통기한이 가장 짧은 2개를 보여주는 함수
+  List<Widget> _buildExpiringFoodItems() {
+    final sortedItems = [..._foodItems];
+
+    sortedItems.sort((a, b) => a.expiryDate.compareTo(b.expiryDate));
+
+    if (sortedItems.isEmpty) {
+      return [const Text('식품 목록이 없습니다.')];
+    }
+
+    return sortedItems
+        .take(2)
+        .map((item) {
+      final diff = item.expiryDate.difference(DateTime.now()).inDays;
+      final dDayText = diff == 0 ? 'D-Day' : 'D-$diff';
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8.0),
+        child: _expiringFoodItem(item.name, dDayText),
+      );
+    }).toList();
   }
 
   Widget _expiringFoodItem(String name, String dDay) {
@@ -303,18 +364,18 @@ class _HomePageState extends State<HomePage> {
     return Row(
       children: [
         Transform.scale(
-          scale: 0.8, // 체크박스 크기 조절
+          scale: 0.8,
           child: Checkbox(
             value: checked,
             onChanged: (val) {},
-            activeColor: Colors.blue[100], // 체크 표시 색상
-            side: MaterialStateBorderSide.resolveWith( // 체크박스 테두리 색상 (연하게)
+            activeColor: Colors.blue[100],
+            side: MaterialStateBorderSide.resolveWith(
                   (states) => BorderSide(width: 1.0, color: Colors.grey[400]!),
             ),
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap, // 터치 영역 축소
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
         ),
-        const SizedBox(width: 0), // 체크박스와 글자의 간격 조절
+        const SizedBox(width: 0),
         Text(name, style: kBodyTextStyle),
       ],
     );
@@ -358,14 +419,16 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
                 ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    (bottomNavKey.currentState as dynamic)?.onItemTapped(3);
+                  },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFFC5D6A3),
+                    backgroundColor: const Color(0xFFC5D6A3),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     minimumSize: const Size(100, 36),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12), // 원하는 반경 값 (예: 10)
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                   child: const Text('자세히 보기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -378,13 +441,19 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // --- 모달 바텀 시트 표시 헬퍼 함수 ---
-  void _showAppModal(BuildContext context, Widget modalContent, {bool isScrollControlled = false}) {
-    showModalBottomSheet(
+  // 모달을 호출하고 결과를 받는 함수
+  void _showAppModal(BuildContext context, Widget modalContent, {bool isScrollControlled = false}) async {
+    final result = await showModalBottomSheet(
       context: context,
       isScrollControlled: isScrollControlled,
-      // shape: const RoundedRectangleBorder(borderRadius: kModalBorderRadius),
+      backgroundColor: Colors.transparent,
       builder: (_) => modalContent,
     );
+
+    if (result != null && result is List<ShoppingItem>) {
+      setState(() {
+        _shoppingItems = result;
+      });
+    }
   }
 }

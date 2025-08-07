@@ -1,3 +1,5 @@
+// FILE: lib/ui/widgets/bottom_nav.dart
+
 import 'package:flutter/material.dart';
 import 'package:smart_fridge_system/constants/app_colors.dart';
 import 'package:smart_fridge_system/ui/pages/refrigerator/refrigerator_main.dart';
@@ -6,6 +8,8 @@ import 'package:smart_fridge_system/ui/pages/recipe/recipe_main_page.dart';
 import 'package:smart_fridge_system/ui/pages/nutrition/nutrition_screen.dart';
 import 'package:smart_fridge_system/ui/pages/profile/profile_screen.dart';
 import 'package:smart_fridge_system/ui/pages/refrigerator/food_item_dialog.dart';
+
+final GlobalKey<State<BottomNav>> bottomNavKey = GlobalKey<State<BottomNav>>();
 
 class BottomNav extends StatefulWidget {
   const BottomNav({super.key});
@@ -16,9 +20,6 @@ class BottomNav extends StatefulWidget {
 
 class _BottomNavState extends State<BottomNav> {
   int _selectedIndex = 0;
-
-  // ⭐️ 스피드 다이얼 메뉴 관련 상태 변수 삭제
-  // bool _isMenuOpen = false;
 
   static final List<Widget> _widgetOptions = <Widget>[
     HomePage(),
@@ -34,10 +35,6 @@ class _BottomNavState extends State<BottomNav> {
     });
   }
 
-  // ⭐️ 스피드 다이얼 메뉴 토글 함수 삭제
-  // void _toggleMenu() { ... }
-
-  // ⭐️ 다이얼로그를 보여주는 함수 간소화
   void _showAddFoodDialog() {
     showDialog(
       context: context,
@@ -67,14 +64,11 @@ class _BottomNavState extends State<BottomNav> {
         ],
       )
           : null,
-      // ⭐️ Stack 및 메뉴 관련 위젯 삭제, body를 바로 표시
       body: _widgetOptions.elementAt(_selectedIndex),
       floatingActionButton: _selectedIndex == 1
           ? FloatingActionButton(
-        // ⭐️ onPressed 이벤트를 _showAddFoodDialog로 직접 연결
         onPressed: _showAddFoodDialog,
         backgroundColor: AppColors.accent,
-        // ⭐️ 아이콘을 + 모양으로 고정
         child: const Icon(
           Icons.add,
           color: AppColors.primary,
@@ -108,7 +102,7 @@ class _BottomNavState extends State<BottomNav> {
           ),
         ],
         currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
+        onTap: _onItemTapped, // 함수 이름 변경 반영
         backgroundColor: AppColors.accent,
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.white,
@@ -119,8 +113,4 @@ class _BottomNavState extends State<BottomNav> {
       ),
     );
   }
-
-// ⭐️ 스피드 다이얼 메뉴 관련 위젯 함수들 삭제
-// Widget _buildSpeedDialMenu() { ... }
-// Widget _buildMenuOption(...) { ... }
 }
