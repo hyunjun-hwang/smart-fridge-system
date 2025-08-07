@@ -1,14 +1,9 @@
+// FILE: lib/main.dart
+
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
 import 'package:smart_fridge_system/ui/widgets/bottom_nav.dart';
 
-
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+void main() {
   runApp(const MyApp());
 }
 
@@ -18,7 +13,11 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: const BottomNav(),
+      title: 'Smart Fridge System',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: BottomNav(key: bottomNavKey),
     );
   }
 }
