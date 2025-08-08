@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:smart_fridge_system/constants/app_colors.dart';
 import 'package:smart_fridge_system/data/models/food_item.dart';
-import 'package:smart_fridge_system/data/repositories/food_repository.dart';
+import 'package:smart_fridge_system/providers/food_provider.dart';
 import 'package:smart_fridge_system/ui/pages/refrigerator/food_list_item_card.dart';
-import 'package:smart_fridge_system/ui/pages/refrigerator/edit_food_item_dialog.dart'; // 수정용 다이얼로그 import
+import 'package:smart_fridge_system/ui/pages/refrigerator/food_item_dialog.dart';
 
 class FridgePage extends StatefulWidget {
   const FridgePage({super.key});
@@ -13,25 +14,82 @@ class FridgePage extends StatefulWidget {
 }
 
 class _FridgePageState extends State<FridgePage> {
-  final FoodRepository _foodRepository = FoodRepository();
-  Future<List<FoodItem>>? _foodItemsFuture;
-
-  // 필터 및 정렬 상태 변수
-  final List<String> categories = ['전체', '과일', '고기', '채소', '유제품'];
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
   String selectedCategory = '전체';
-
-  final List<String> storageOptions = ['전체', '냉장실', '냉동고'];
   String selectedStorage = '전체';
-
-  final List<String> sortOptions = [
-    '유통기한 임박한 순', '유통기한 많이 남은순', '최근에 입고된 순', '예전에 입고된 순', '수량 많은 순', '수량 적은 순'
-  ];
   String selectedSortOrder = '유통기한 임박한 순';
+
+  final List<String> _categoryFilterOptions = [
+    '전체',
+    ...FoodCategory.values.map((e) => e.displayName)
+  ];
+  final List<String> _storageOptions = [
+    '전체',
+    ...StorageType.values.map((e) => e.displayName)
+  ];
+  final List<String> _sortOptions = [
+    '유통기한 임박한 순',
+    '유통기한 많이 남은순',
+    '최근에 입고된 순',
+    '예전에 입고된 순',
+    '수량 많은 순',
+    '수량 적은 순'
+  ];
 
   @override
   void initState() {
     super.initState();
-    _foodItemsFuture = _foodRepository.getFoodItems();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<FoodProvider>(context, listen: false).fetchFoodItems();
+    });
+    _searchController.addListener(() {
+      setState(() => _searchQuery = _searchController.text);
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _showEditFoodDialog(FoodItem item) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        // EditFoodItemDialog 대신 FoodItemDialog 호출
+        return FoodItemDialog(item: item);
+      },
+    );
+  }
+
+  // --- ⭐️ 삭제 확인 다이얼로그 함수 추가 ⭐️ ---
+  Future<bool?> _showDeleteConfirmDialog() {
+    return showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('삭제 확인'),
+          content: const Text('정말로 이 항목을 삭제하시겠습니까?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('취소'),
+              onPressed: () {
+                Navigator.of(context).pop(false); // false 반환
+              },
+            ),
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('삭제'),
+              onPressed: () {
+                Navigator.of(context).pop(true); // true 반환
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -40,52 +98,42 @@ class _FridgePageState extends State<FridgePage> {
       color: const Color(0xFFF2F2F7),
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
-                  spreadRadius: 1,
-                  blurRadius: 15,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                _buildSearchAndFilter(),
-                const SizedBox(height: 16),
-                _buildSortButton(),
-              ],
-            ),
-          ),
+          _buildFilterAndSortSection(),
           Expanded(
-            child: FutureBuilder<List<FoodItem>>(
-              future: _foodItemsFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
+            child: Consumer<FoodProvider>(
+              builder: (context, provider, child) {
+                // ... (로딩, 에러, 빈 상태 처리는 이전과 동일)
+                if (provider.isLoading && provider.foodItems.isEmpty) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                if (snapshot.hasError) {
-                  return Center(child: Text('데이터를 불러오는 데 실패했습니다: ${snapshot.error}'));
+                if (provider.error != null) {
+                  return Center(
+                      child: Text('데이터를 불러오는 데 실패했습니다: ${provider.error}'));
                 }
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                if (provider.foodItems.isEmpty) {
                   return const Center(child: Text('냉장고에 음식이 없어요!'));
                 }
 
-                // --- 필터링 및 정렬 로직 ---
-                List<FoodItem> filteredItems = snapshot.data!;
-
+                // ... (필터링, 정렬 로직은 이전과 동일)
+                List<FoodItem> filteredItems = provider.foodItems;
+                if (_searchQuery.isNotEmpty) {
+                  filteredItems = filteredItems
+                      .where((item) => item.name
+                      .toLowerCase()
+                      .contains(_searchQuery.toLowerCase()))
+                      .toList();
+                }
                 if (selectedStorage != '전체') {
-                  filteredItems = filteredItems.where((item) => item.storage.displayName == selectedStorage).toList();
+                  filteredItems = filteredItems
+                      .where((item) => item.storage.displayName == selectedStorage)
+                      .toList();
                 }
-
                 if (selectedCategory != '전체') {
-                  filteredItems = filteredItems.where((item) => item.category == selectedCategory).toList();
+                  filteredItems = filteredItems
+                      .where(
+                          (item) => item.category.displayName == selectedCategory)
+                      .toList();
                 }
-
                 filteredItems.sort((a, b) {
                   switch (selectedSortOrder) {
                     case '유통기한 많이 남은순':
@@ -103,7 +151,6 @@ class _FridgePageState extends State<FridgePage> {
                       return a.expiryDate.compareTo(b.expiryDate);
                   }
                 });
-                // --- 로직 끝 ---
 
                 if (filteredItems.isEmpty) {
                   return const Center(child: Text('해당 조건의 음식이 없어요.'));
@@ -117,9 +164,17 @@ class _FridgePageState extends State<FridgePage> {
                     return FoodListItemCard(
                       item: item,
                       onTap: () => _showEditFoodDialog(item),
+                      // --- ⭐️ onDelete 콜백 연결 ⭐️ ---
+                      onDelete: () async {
+                        final confirmed = await _showDeleteConfirmDialog();
+                        if (confirmed == true && mounted) {
+                          context.read<FoodProvider>().deleteFoodItem(item);
+                        }
+                      },
                     );
                   },
-                  separatorBuilder: (context, index) => const SizedBox(height: 12),
+                  separatorBuilder: (context, index) =>
+                  const SizedBox(height: 12),
                 );
               },
             ),
@@ -129,15 +184,30 @@ class _FridgePageState extends State<FridgePage> {
     );
   }
 
-  void _showEditFoodDialog(FoodItem item) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return EditFoodItemDialog(item: item);
-      },
+  // --- UI 빌드 헬퍼 함수들은 이전과 동일 ---
+  Widget _buildFilterAndSortSection() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            spreadRadius: 1,
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          _buildSearchAndFilter(),
+          const SizedBox(height: 16),
+          _buildSortButton(),
+        ],
+      ),
     );
   }
-
   Widget _buildSearchAndFilter() {
     return Column(
       children: [
@@ -147,20 +217,24 @@ class _FridgePageState extends State<FridgePage> {
             const SizedBox(width: 8),
             Expanded(
               child: TextField(
+                controller: _searchController,
                 decoration: InputDecoration(
                   hintText: '여기에 검색하세요.',
                   hintStyle: const TextStyle(color: AppColors.textSecondary),
-                  prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
+                  prefixIcon:
+                  const Icon(Icons.search, color: AppColors.textSecondary),
                   filled: true,
                   fillColor: AppColors.white,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                  contentPadding:
+                  const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(20),
                     borderSide: const BorderSide(color: AppColors.textSecondary),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(20),
-                    borderSide: const BorderSide(color: AppColors.textSecondary, width: 1.5),
+                    borderSide: const BorderSide(
+                        color: AppColors.textSecondary, width: 1.5),
                   ),
                 ),
               ),
@@ -172,14 +246,15 @@ class _FridgePageState extends State<FridgePage> {
           height: 36,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            itemCount: categories.length,
+            itemCount: _categoryFilterOptions.length,
             itemBuilder: (context, index) {
-              final bool isSelected = selectedCategory == categories[index];
+              final categoryName = _categoryFilterOptions[index];
+              final bool isSelected = selectedCategory == categoryName;
               return ChoiceChip(
-                label: Text(categories[index]),
+                label: Text(categoryName),
                 selected: isSelected,
                 onSelected: (selected) {
-                  setState(() => selectedCategory = categories[index]);
+                  setState(() => selectedCategory = categoryName);
                 },
                 backgroundColor: AppColors.white,
                 selectedColor: AppColors.textSecondary,
@@ -200,7 +275,6 @@ class _FridgePageState extends State<FridgePage> {
       ],
     );
   }
-
   Widget _buildStorageDropdown() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -215,7 +289,7 @@ class _FridgePageState extends State<FridgePage> {
           });
         },
         itemBuilder: (BuildContext context) {
-          return storageOptions.map((String choice) {
+          return _storageOptions.map((String choice) {
             return PopupMenuItem<String>(
               value: choice,
               child: Text(choice),
@@ -234,7 +308,6 @@ class _FridgePageState extends State<FridgePage> {
       ),
     );
   }
-
   Widget _buildSortButton() {
     return Row(
       children: [
@@ -245,7 +318,7 @@ class _FridgePageState extends State<FridgePage> {
             });
           },
           itemBuilder: (BuildContext context) {
-            return sortOptions.map((String choice) {
+            return _sortOptions.map((String choice) {
               return PopupMenuItem<String>(
                 value: choice,
                 child: Text(choice),
