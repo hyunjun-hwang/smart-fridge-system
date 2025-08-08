@@ -5,12 +5,14 @@ class CustomTextField extends StatelessWidget {
   final String hintText;
   final bool obscureText;
   final TextEditingController? controller;
+  final TextInputType? keyboardType; // 이 줄을 추가합니다.
 
   const CustomTextField({
     super.key,
     required this.hintText,
     this.obscureText = false,
     this.controller,
+    this.keyboardType, // 생성자에도 이 줄을 추가합니다.
   });
 
   @override
@@ -23,6 +25,7 @@ class CustomTextField extends StatelessWidget {
       child: TextFormField(
         controller: controller,
         obscureText: obscureText,
+        keyboardType: keyboardType, // keyboardType을 여기에 전달합니다.
         decoration: InputDecoration(
           hintText: hintText,
           hintStyle: const TextStyle(

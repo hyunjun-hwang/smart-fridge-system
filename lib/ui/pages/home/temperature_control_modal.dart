@@ -1,96 +1,263 @@
-// FILE: temperature_control_modal.dart
+// FILE: lib/ui/pages/home/temperature_control_modal.dart
 
 import 'package:flutter/material.dart';
-import 'package:smart_fridge_system/constants/app_colors.dart';
+import 'dart:math' as math;
+import 'package:smart_fridge_system/constants/app_constants.dart';
 
-// 온도/습도 조절을 위한 공용 모달 위젯
 class TemperatureControlModal extends StatefulWidget {
-  // 위젯 생성 시 부모 위젯(HomePage)으로부터 전달받는 값들
-  final String title;                 // 모달 제목 (e.g., "냉장고", "냉동고")
-  final double initialTemp;           // 초기 온도 값
-  final double minTemp;               // 최소 온도 값
-  final double maxTemp;               // 최대 온도 값
-  final double initialHumidity;       // 초기 습도 값
-  final ValueChanged<double> onTempChanged; // 온도 변경 시 호출될 콜백 함수
-  final ValueChanged<double> onHumidityChanged; // 습도 변경 시 호출될 콜백 함수
-  final Widget? extraContent;         // 추가적으로 표시할 위젯 (e.g., 가스 상태)
+  final String title;
+  final double initialTemp;
+  final double minTemp;
+  final double maxTemp;
+  final double initialHumidity;
+  final String gasStatus;
+  final int? iceMakerMinutes;
+  final ValueChanged<double> onTempChanged;
+  final ValueChanged<double> onHumidityChanged;
 
   const TemperatureControlModal({
     super.key,
     required this.title,
     required this.initialTemp,
-    required this.minTemp,
-    required this.maxTemp,
+    this.minTemp = -25,
+    this.maxTemp = -15,
     required this.initialHumidity,
+    required this.gasStatus,
+    this.iceMakerMinutes,
     required this.onTempChanged,
     required this.onHumidityChanged,
-    this.extraContent,
   });
 
   @override
-  State<TemperatureControlModal> createState() => _TemperatureControlModalState();
+  State<TemperatureControlModal> createState() =>
+      _TemperatureControlModalState();
 }
 
 class _TemperatureControlModalState extends State<TemperatureControlModal> {
-  // 모달 내부에서 사용할 상태 변수
-  late double _temp;
-  late double _humidity;
+  late double _currentTemp;
+  late double _currentHumidity;
 
-  // 위젯이 처음 생성될 때 호출되는 메소드
   @override
   void initState() {
     super.initState();
-    // 부모로부터 받은 초기 값으로 내부 상태를 설정
-    _temp = widget.initialTemp;
-    _humidity = widget.initialHumidity;
+    _currentTemp = widget.initialTemp;
+    _currentHumidity = widget.initialHumidity;
   }
 
   @override
   Widget build(BuildContext context) {
+    bool isWarning = widget.gasStatus != '정상';
+
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        color: AppColors.white,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min, // 컨텐츠 크기에 맞게 높이 조절
-        children: [
-          Text(widget.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 10),
-          // 온도 조절 슬라이더
-          _buildSlider("온도", _temp, widget.minTemp, widget.maxTemp, (val) {
-            setState(() => _temp = val);     // 1. 모달 내부 UI 업데이트
-            widget.onTempChanged(val);      // 2. 부모 위젯(HomePage)에 변경된 값 전달
-          }),
-          // 습도 조절 슬라이더
-          _buildSlider("습도", _humidity, 0, 100, (val) {
-            setState(() => _humidity = val);  // 1. 모달 내부 UI 업데이트
-            widget.onHumidityChanged(val);   // 2. 부모 위젯(HomePage)에 변경된 값 전달
-          }),
-          const SizedBox(height: 10),
-          // 추가 컨텐츠가 있으면 표시
-          if (widget.extraContent != null) ...[
-            widget.extraContent!,
-            const SizedBox(height: 10),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 제목
+            Container(
+              width: double.infinity, // 가로를 꽉 채우도록 수정
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+              decoration: BoxDecoration(
+                color: Colors.blue[100],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                widget.title,
+                style: kCardTitleTextStyle.copyWith(color: const Color(0xFF003508)),
+              ),
+            ),
+            const SizedBox(height: 30),
+
+            // 컨트롤러 영역
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: _buildSliderWithLabels(
+                    label: '온도',
+                    value: _currentTemp,
+                    displayValue: '${_currentTemp.round()}°C',
+                    min: widget.minTemp,
+                    max: widget.maxTemp,
+                    onChanged: (val) {
+                      setState(() => _currentTemp = val);
+                      widget.onTempChanged(val);
+                    },
+                  ),
+                ),
+                Expanded(
+                  child: _buildSliderWithLabels(
+                    label: '습도',
+                    value: _currentHumidity,
+                    displayValue: '${_currentHumidity.round()}%',
+                    min: 0,
+                    max: 100,
+                    onChanged: (val) {
+                      setState(() => _currentHumidity = val);
+                      widget.onHumidityChanged(val);
+                    },
+                  ),
+                ),
+                Expanded(
+                  child: _buildStatusIndicator(
+                    label: '가스',
+                    status: widget.gasStatus,
+                    isWarning: isWarning,
+                  ),
+                ),
+                if (widget.iceMakerMinutes != null)
+                  Expanded(
+                    child: _buildIceMakerStatus(widget.iceMakerMinutes!),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 30),
+
+            // 닫기 버튼
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kAccentColor,
+                minimumSize: const Size(double.infinity, 50),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                '닫기',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
           ],
-        ],
+        ),
       ),
     );
   }
 
-  // 슬라이더 UI를 만드는 재사용 메소드
-  Widget _buildSlider(String label, double value, double min, double max, ValueChanged<double> onChanged) {
+  // 온도/습도 슬라이더 위젯
+  Widget _buildSliderWithLabels({
+    required String label,
+    required double value,
+    required String displayValue,
+    required double min,
+    required double max,
+    required ValueChanged<double> onChanged,
+  }) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        Text("$label: ${value.toStringAsFixed(1)}"),
-        Slider(
-          value: value,
-          onChanged: onChanged,
-          min: min,
-          max: max,
+        Text(displayValue,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 150, // 막대 높이를 조정하여 위치 맞춤
+          child: RotatedBox(
+            quarterTurns: 3,
+            child: SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                trackHeight: 8.0,
+                trackShape: const RoundedRectSliderTrackShape(),
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 12.0),
+                overlayShape: const RoundSliderOverlayShape(overlayRadius: 20.0),
+                activeTrackColor: kAccentColor,
+                inactiveTrackColor: Colors.grey[300],
+                thumbColor: Colors.white,
+              ),
+              child: Slider(
+                value: value,
+                min: min,
+                max: max,
+                divisions: (max - min).toInt(),
+                onChanged: onChanged,
+              ),
+            ),
+          ),
         ),
+        const SizedBox(height: 10),
+        Text(label, style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+      ],
+    );
+  }
+
+  // 가스 상태 표시 위젯
+  Widget _buildStatusIndicator(
+      {required String label, required String status, bool isWarning = false}) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        Text(status,
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: isWarning ? kWarningColor : kNormalColor)),
+        const SizedBox(height: 34),
+        SizedBox(
+          height: 110, // 막대 높이 조정
+          child: Stack(
+            children: [
+              Container(
+                width: 8,
+                height: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              Positioned(
+                bottom: 0,
+                child: Container(
+                  width: 8,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: isWarning ? kWarningColor : kNormalColor,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 30),
+        Text(label, style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+      ],
+    );
+  }
+
+  // 얼음 상태 표시 위젯
+  Widget _buildIceMakerStatus(int minutes) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        Text('${minutes}분',
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 30),
+        Container(
+            width: 60,
+            height: 110, // 막대 높이 조정
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey[400]!),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Align(
+                alignment: Alignment.bottomCenter,
+                child: Transform.rotate(
+                    angle: -math.pi / 20,
+                    child: const Icon(Icons.ac_unit,
+                        size: 40, color: Colors.lightBlueAccent)))),
+        const SizedBox(height: 30),
+        Text('얼음', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
       ],
     );
   }
