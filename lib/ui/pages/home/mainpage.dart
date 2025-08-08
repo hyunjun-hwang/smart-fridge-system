@@ -1,5 +1,3 @@
-// FILE: lib/ui/pages/home/mainpage.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:smart_fridge_system/constants/app_constants.dart';
@@ -51,7 +49,7 @@ class _HomePageState extends State<HomePage> {
         imageUrl: 'assets/images/beef.png',
         quantity: 500,
         unit: Unit.grams,
-        expiryDate: DateTime.now().add(const Duration(days: 11)),
+        expiryDate: DateTime.now().add(const Duration(days: 2)), // D-day 테스트를 위해 수정
         stockedDate: DateTime.now().subtract(const Duration(days: 3)),
         storage: StorageType.fridge,
         category: FoodCategory.meat,
@@ -62,7 +60,7 @@ class _HomePageState extends State<HomePage> {
         imageUrl: 'assets/images/avocado.png',
         quantity: 2,
         unit: Unit.count,
-        expiryDate: DateTime.now().add(const Duration(days: 6)),
+        expiryDate: DateTime.now().add(const Duration(days: 8)), // D-day 테스트를 위해 수정
         stockedDate: DateTime.now().subtract(const Duration(days: 1)),
         storage: StorageType.fridge,
         category: FoodCategory.fruit,
@@ -382,6 +380,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // --- ⭐️ 수정된 함수: _buildExpiringFoodItems ---
   List<Widget> _buildExpiringFoodItems() {
     final sortedItems = [..._foodItems];
 
@@ -396,22 +395,44 @@ class _HomePageState extends State<HomePage> {
     return sortedItems
         .take(2)
         .map((item) {
+      // D-day를 숫자 형태로 계산합니다.
       final diff = item.expiryDate.difference(DateTime.now()).inDays;
       final dDayText = diff < 0 ? 'D+${diff.abs()}' : (diff == 0 ? 'D-Day' : 'D-$diff');
+
       return Padding(
         padding: const EdgeInsets.only(bottom: 8.0),
-        child: _expiringFoodItem(dDayText, item.name),
+        // 숫자 형태의 D-day(diff)도 함께 전달합니다.
+        child: _expiringFoodItem(dDayText, item.name, diff),
       );
     }).toList();
   }
 
-  Widget _expiringFoodItem(String dDay, String name) {
+  // --- ⭐️ 수정된 함수: _expiringFoodItem ---
+  // 함수의 인자로 숫자 D-day(dDayValue)를 추가합니다.
+  Widget _expiringFoodItem(String dDayText, String name, int dDayValue) {
+    // D-day 값에 따라 색상을 결정합니다.
+    Color dDayColor;
+    if (dDayValue <= 3) {
+      dDayColor = kWarningColor; // D-3 이하: 위험
+    } else if (dDayValue <= 10) {
+      dDayColor = Colors.orange; // D-10 이하: 주의 (AppColors에 맞게 수정)
+    } else {
+      dDayColor = Colors.green;  // 그 외: 안전 (AppColors에 맞게 수정)
+    }
+
     return Row(
       children: [
         Container(
           width: 55, // D-day 텍스트 너비를 고정하여 정렬을 맞춥니다.
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          child: Text(dDay, style: const TextStyle(color: kWarningColor)),
+          child: Text(
+            dDayText,
+            style: TextStyle(
+              color: dDayColor, // 위에서 결정된 색상 적용
+              fontSize: 16,     // 폰트 크기 적용
+              fontWeight: FontWeight.bold, // 폰트 굵기 적용
+            ),
+          ),
         ),
         const SizedBox(width: 8),
         Text(name, style: kBodyTextStyle),
