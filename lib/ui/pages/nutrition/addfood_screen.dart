@@ -58,7 +58,6 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
                       protein: double.tryParse(_proteinController.text) ?? 0,
                       amount: 100,
                       count: 1,
-                      imagePath: '',
                     );
                     Navigator.pop(context, newFood);
                   }
