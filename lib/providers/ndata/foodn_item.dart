@@ -1,12 +1,11 @@
 class FoodItemn {
-  final String name;            // 음식 이름 (예: 사과)
-  final double calories;           // 1개당 칼로리
-  final double carbohydrates;   // 탄수화물 (g)
-  final double protein;         // 단백질 (g)
-  final double fat;             // 지방 (g)
-  final double amount;          // 1개 기준 무게 (g)
-  final double count;           // 먹은 개수 (0.5 단위 가능)
-  final String imagePath;       // 이미지 경로 (asset path 또는 URL)
+  final String name; // 음식 이름 (예: 사과)
+  final double calories; // 1개당 칼로리
+  final double carbohydrates; // 탄수화물 (g)
+  final double protein; // 단백질 (g)
+  final double fat; // 지방 (g)
+  final double amount; // 1개 기준 무게 (g)
+  final double count; // 먹은 개수 (0.5 단위 가능)
 
   FoodItemn({
     required this.name,
@@ -16,24 +15,35 @@ class FoodItemn {
     required this.fat,
     required this.amount,
     required this.count,
-    required this.imagePath,
   });
 
   /// ✅ JSON → 객체 (API 응답 받을 때)
+  factory FoodItemn.fromApiJson(Map<String, dynamic> json) {
+    return FoodItemn(
+      name: json['DESC_KOR'] ?? '이름 없음',
+      calories: double.tryParse(json['NUTR_CONT1'] ?? '0') ?? 0,
+      carbohydrates: double.tryParse(json['NUTR_CONT2'] ?? '0') ?? 0,
+      protein: double.tryParse(json['NUTR_CONT3'] ?? '0') ?? 0,
+      fat: double.tryParse(json['NUTR_CONT4'] ?? '0') ?? 0,
+      amount: 100,
+      count: 1.0,
+    );
+  }
+
+  /// ✅ 일반 JSON → 객체 (내 저장용)
   factory FoodItemn.fromJson(Map<String, dynamic> json) {
     return FoodItemn(
       name: json['name'],
-      calories: json['calories'],
+      calories: (json['calories'] as num).toDouble(),
       carbohydrates: (json['carbohydrates'] as num).toDouble(),
       protein: (json['protein'] as num).toDouble(),
       fat: (json['fat'] as num).toDouble(),
       amount: (json['amount'] as num).toDouble(),
       count: (json['count'] as num).toDouble(),
-      imagePath: json['imagePath'],
     );
   }
 
-  /// ✅ 객체 → JSON (서버에 보낼 때)
+  /// ✅ 객체 → JSON (저장용)
   Map<String, dynamic> toJson() {
     return {
       'name': name,
@@ -43,7 +53,6 @@ class FoodItemn {
       'fat': fat,
       'amount': amount,
       'count': count,
-      'imagePath': imagePath,
     };
   }
 
@@ -56,7 +65,6 @@ class FoodItemn {
     double? fat,
     double? amount,
     double? count,
-    String? imagePath,
   }) {
     return FoodItemn(
       name: name ?? this.name,
@@ -66,12 +74,11 @@ class FoodItemn {
       fat: fat ?? this.fat,
       amount: amount ?? this.amount,
       count: count ?? this.count,
-      imagePath: imagePath ?? this.imagePath,
     );
   }
 
   @override
   String toString() {
-    return 'FoodItem(name: $name, count: $count, cal: $calories)';
+    return 'FoodItemn(name: $name, count: $count, cal: $calories)';
   }
 }
