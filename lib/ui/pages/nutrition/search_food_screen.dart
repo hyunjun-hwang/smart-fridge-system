@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:smart_fridge_system/providers/daily_nutrition_provider.dart';
 import 'package:smart_fridge_system/providers/ndata/foodn_item.dart';
@@ -29,6 +31,8 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
   @override
   void initState() {
     super.initState();
+
+    // 예시 데이터
     recentSearches = [
       FoodItemn(
         name: '사과',
@@ -38,7 +42,6 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
         fat: 0.2,
         amount: 100,
         count: 1.0,
-        imagePath: 'https://cdn-icons-png.flaticon.com/512/415/415682.png',
       ),
     ];
     fridgeItems = [
@@ -50,9 +53,57 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
         fat: 1.0,
         amount: 100,
         count: 1.0,
-        imagePath: 'https://cdn-icons-png.flaticon.com/512/1046/1046870.png',
       ),
     ];
+  }
+
+  Future<void> fetchFoodInfo(String foodName) async {
+    const String apiKey = 'aC9p2FWLKdtxRQI%2FqYrTTCIl9LwAHXOl1ZJ3hcon7nFhVsWWxCck2f03W%2BMCrNj1b8F3wJSUzouE7pYGqHKRfQ%3D%3D';
+    final String baseUrl = 'https://openapi.foodsafetykorea.go.kr/api';
+    final String endpoint = '$baseUrl/$apiKey/I2790/json/1/5/DESC_KOR=$foodName';
+
+    try {
+      final response = await http.get(Uri.parse(endpoint));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        if (data['I2790']?['row'] != null) {
+          final List<FoodItemn> newItems = [];
+
+          for (var item in data['I2790']['row']) {
+            final name = item['DESC_KOR'] ?? '';
+            final cal = double.tryParse(item['NUTR_CONT1'] ?? '0') ?? 0;
+            final carbs = double.tryParse(item['NUTR_CONT2'] ?? '0') ?? 0;
+            final protein = double.tryParse(item['NUTR_CONT3'] ?? '0') ?? 0;
+            final fat = double.tryParse(item['NUTR_CONT4'] ?? '0') ?? 0;
+
+            newItems.add(FoodItemn(
+              name: name,
+              calories: cal,
+              carbohydrates: carbs,
+              protein: protein,
+              fat: fat,
+              amount: 100,
+              count: 1.0,
+            ));
+          }
+
+          setState(() {
+            recentSearches = newItems;
+            selectedIndex = 0;
+          });
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('검색 결과가 없습니다.')),
+          );
+        }
+      } else {
+        print('응답 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('에러 발생: $e');
+    }
   }
 
   void _addFoodAndReturn(FoodItemn food) {
@@ -138,7 +189,24 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: ElevatedButton(
+              onPressed: () {
+                final keyword = _searchController.text.trim();
+                if (keyword.isNotEmpty) {
+                  fetchFoodInfo(keyword);
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF003508),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('검색'),
+            ),
+          ),
+          const SizedBox(height: 8),
           if (selectedIndex == 2)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -221,7 +289,6 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
           ),
           child: ListTile(
             contentPadding: const EdgeInsets.all(12),
-            leading: Image.network(item.imagePath, width: 48, height: 48),
             title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold)),
             subtitle: Text('열량: ${item.calories.toStringAsFixed(1)} kcal'),
             trailing: IconButton(

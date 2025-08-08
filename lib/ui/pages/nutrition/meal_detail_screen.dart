@@ -103,16 +103,15 @@ class MealDetailScreen extends StatelessWidget {
                           ),
                           child: Row(
                             children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.network(
-                                  food.imagePath,
-                                  width: 50,
-                                  height: 50,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) =>
-                                  const Icon(Icons.image_not_supported, size: 50),
+                              // ✅ imagePath 제거 → 기본 아이콘으로 대체
+                              Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[200],
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
+                                child: const Icon(Icons.fastfood, size: 30, color: Colors.grey),
                               ),
                               const SizedBox(width: 12),
                               Expanded(

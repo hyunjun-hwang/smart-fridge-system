@@ -23,15 +23,10 @@ Future<void> showFoodDetailDialog({
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (item.imagePath.isNotEmpty)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.network(
-                  item.imagePath,
-                  height: 200,
-                  fit: BoxFit.cover,
-                ),
-              ),
+            // ✅ 이미지 대신 아이콘으로 대체
+            Center(
+              child: Icon(Icons.fastfood, size: 80, color: Colors.grey[400]),
+            ),
             const SizedBox(height: 16),
 
             Center(
@@ -68,8 +63,7 @@ Future<void> showFoodDetailDialog({
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () {
-                      onAdd(item); // ✅ 여기서 Navigator.pop(context, item) 실행됨
-                      // ❌ 여기서는 더 이상 Navigator.pop(context) 호출하지 않음
+                      onAdd(item); // ✅ 추가 콜백 실행
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFC7D8A4),
