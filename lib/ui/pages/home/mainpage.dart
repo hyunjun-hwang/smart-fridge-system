@@ -346,7 +346,7 @@ class _HomePageState extends State<HomePage> {
                         onChanged: (val) {
                           _showAppModal(
                             context,
-                            ShoppingListModal(initialItems: _shoppingItems.map((e) => e.name).toList()),
+                            ShoppingListModal(initialItems: _shoppingItems),
                             isScrollControlled: true,
                           );
                         },
@@ -362,7 +362,7 @@ class _HomePageState extends State<HomePage> {
                       onPressed: () {
                         _showAppModal(
                           context,
-                          ShoppingListModal(initialItems: _shoppingItems.map((e) => e.name).toList()),
+                          ShoppingListModal(initialItems: _shoppingItems),
                           isScrollControlled: true,
                         );
                       },
@@ -400,24 +400,21 @@ class _HomePageState extends State<HomePage> {
       final dDayText = diff < 0 ? 'D+${diff.abs()}' : (diff == 0 ? 'D-Day' : 'D-$diff');
       return Padding(
         padding: const EdgeInsets.only(bottom: 8.0),
-        child: _expiringFoodItem(item.name, dDayText),
+        child: _expiringFoodItem(dDayText, item.name),
       );
     }).toList();
   }
 
-  Widget _expiringFoodItem(String name, String dDay) {
+  Widget _expiringFoodItem(String dDay, String name) {
     return Row(
       children: [
-        Text(name, style: kBodyTextStyle),
-        const SizedBox(width: 8),
         Container(
+          width: 55, // D-day 텍스트 너비를 고정하여 정렬을 맞춥니다.
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            border: Border.all(color: kWarningColor),
-            borderRadius: BorderRadius.circular(12),
-          ),
           child: Text(dDay, style: const TextStyle(color: kWarningColor)),
         ),
+        const SizedBox(width: 8),
+        Text(name, style: kBodyTextStyle),
       ],
     );
   }

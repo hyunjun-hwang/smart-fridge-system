@@ -41,24 +41,21 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => FoodProvider()),
       ],
       child: MaterialApp(
-        title: 'Smart Fridge System', // Jieun 브랜치의 title 추가
-        theme: ThemeData( // Jieun 브랜치의 theme 추가
+        title: 'Smart Fridge System',
+        theme: ThemeData(
           primarySwatch: Colors.blue,
         ),
         home: StreamBuilder<User?>(
           stream: FirebaseAuth.instance.authStateChanges(),
           builder: (context, snapshot) {
-            // 연결 중일 때는 로딩 화면을 보여줍니다.
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
 
-            // snapshot.hasData는 사용자가 로그인했음을 의미합니다.
             if (snapshot.hasData) {
-              // 로그인 상태이면 BottomNav (메인 페이지)를 보여줍니다.
-              return const BottomNav();
+              // `const` 키워드를 삭제하여 동적으로 `key`를 전달하도록 수정했습니다.
+              return BottomNav(key: bottomNavKey);
             } else {
-              // 로그아웃 상태이면 WelcomePage를 보여줍니다.
               return const WelcomePage();
             }
           },

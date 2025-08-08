@@ -11,7 +11,7 @@ class ShoppingItem {
 }
 
 class ShoppingListModal extends StatefulWidget {
-  final List<String> initialItems;
+  final List<ShoppingItem> initialItems;
   const ShoppingListModal({super.key, this.initialItems = const []});
 
   @override
@@ -27,12 +27,10 @@ class _ShoppingListModalState extends State<ShoppingListModal> {
   @override
   void initState() {
     super.initState();
-    // 초기 아이템으로 리스트 구성
-    int idCounter = 0;
-    for (var name in widget.initialItems) {
-      _shoppingList
-          .add(ShoppingItem(id: idCounter++, name: name, isChecked: name == "복숭아"));
-    }
+    // [✓] 전달받은 아이템 리스트로 _shoppingList를 초기화
+    // map을 사용하여 새로운 리스트를 생성함으로써, 모달 내의 변경사항이 '닫기'를 누르기 전까지 메인 페이지에 영향을 주지 않도록 합니다.
+    _shoppingList.addAll(widget.initialItems.map(
+            (item) => ShoppingItem(id: item.id, name: item.name, isChecked: item.isChecked)));
   }
 
   @override
