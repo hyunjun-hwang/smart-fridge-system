@@ -1,11 +1,12 @@
+// providers/ndata/foodn_item.dart
 class FoodItemn {
-  final String name; // 음식 이름 (예: 사과)
-  final double calories; // 1개당 칼로리
-  final double carbohydrates; // 탄수화물 (g)
-  final double protein; // 단백질 (g)
-  final double fat; // 지방 (g)
-  final double amount; // 1개 기준 무게 (g)
-  final double count; // 먹은 개수 (0.5 단위 가능)
+  final String name;          // 음식 이름 (예: 사과/김밥 등)
+  final double calories;      // kcal
+  final double carbohydrates; // g
+  final double protein;       // g
+  final double fat;           // g
+  final double amount;        // 1회 제공량(g) - 기본 100g
+  final double count;         // 먹은 개수 (0.5 단위 가능)
 
   FoodItemn({
     required this.name,
@@ -17,15 +18,40 @@ class FoodItemn {
     required this.count,
   });
 
+  // 문자열/숫자 혼용 대응
+  static double _num(dynamic v) => double.tryParse('${v ?? '0'}') ?? 0.0;
+
   /// ✅ JSON → 객체 (API 응답 받을 때)
+  /// - 신 스키마: AMT_NUM1(열량), AMT_NUM6(탄), AMT_NUM3(단), AMT_NUM4(지), SERVING_SIZE("100g")
+  /// - 구 스키마: NUTR_CONT1~4 (열/탄/단/지), 1회 제공량 정보 없으면 100g
   factory FoodItemn.fromApiJson(Map<String, dynamic> json) {
+    // 이름키 우선순위: FOOD_NM_KR > DESC_KOR > FOOD_NAME
+    final String name =
+    (json['FOOD_NM_KR'] ?? json['DESC_KOR'] ?? json['FOOD_NAME'] ?? '이름 없음').toString();
+
+    // 어떤 스키마인지 감지
+    final bool isAmtSchema = json.containsKey('AMT_NUM1') || json.containsKey('SERVING_SIZE');
+
+    final double calories = isAmtSchema ? _num(json['AMT_NUM1']) : _num(json['NUTR_CONT1']);
+    final double carbs    = isAmtSchema ? _num(json['AMT_NUM6']) : _num(json['NUTR_CONT2']);
+    final double protein  = isAmtSchema ? _num(json['AMT_NUM3']) : _num(json['NUTR_CONT3']);
+    final double fat      = isAmtSchema ? _num(json['AMT_NUM4']) : _num(json['NUTR_CONT4']);
+
+    // SERVING_SIZE 예: "100g" → 100
+    double amount = 100;
+    final ss = json['SERVING_SIZE']?.toString();
+    if (ss != null) {
+      final m = RegExp(r'([\d.]+)').firstMatch(ss);
+      if (m != null) amount = double.tryParse(m.group(1)!) ?? 100;
+    }
+
     return FoodItemn(
-      name: json['DESC_KOR'] ?? '이름 없음',
-      calories: double.tryParse(json['NUTR_CONT1'] ?? '0') ?? 0,
-      carbohydrates: double.tryParse(json['NUTR_CONT2'] ?? '0') ?? 0,
-      protein: double.tryParse(json['NUTR_CONT3'] ?? '0') ?? 0,
-      fat: double.tryParse(json['NUTR_CONT4'] ?? '0') ?? 0,
-      amount: 100,
+      name: name.isEmpty ? '이름 없음' : name,
+      calories: calories,
+      carbohydrates: carbs,
+      protein: protein,
+      fat: fat,
+      amount: amount,
       count: 1.0,
     );
   }
@@ -78,7 +104,5 @@ class FoodItemn {
   }
 
   @override
-  String toString() {
-    return 'FoodItemn(name: $name, count: $count, cal: $calories)';
-  }
+  String toString() => 'FoodItemn(name: $name, count: $count, cal: $calories)';
 }
