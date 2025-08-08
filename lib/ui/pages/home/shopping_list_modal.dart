@@ -97,15 +97,6 @@ class _ShoppingListModalState extends State<ShoppingListModal> {
                     style:
                     TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
             const SizedBox(height: 20),
-            Row(
-              children: [
-                Icon(Icons.info_outline, color: Colors.grey[600], size: 20),
-                const SizedBox(width: 8),
-                Text('현재 냉장고에 우유가 없습니다.',
-                    style: TextStyle(fontSize: 15, color: Colors.grey[700])),
-              ],
-            ),
-            const SizedBox(height: 10),
             Flexible(
               child: ListView.builder(
                 shrinkWrap: true,

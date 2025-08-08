@@ -9,6 +9,7 @@ import 'package:smart_fridge_system/ui/pages/home/shopping_list_modal.dart';
 import 'package:smart_fridge_system/ui/widgets/bottom_nav.dart';
 import 'package:smart_fridge_system/data/repositories/food_repository.dart';
 import 'package:smart_fridge_system/data/models/food_item.dart';
+import 'package:uuid/uuid.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -25,9 +26,11 @@ class _HomePageState extends State<HomePage> {
   double _fridgeTemp = 3.0;
   double _fridgeHumidity = 60.0;
   String _fridgeGasStatus = "정상";
+  final Uuid _uuid = Uuid();
 
-  // FoodRepository를 통해 가져온 식품 목록
-  List<FoodItem> _foodItems = [];
+  // `_foodItems` 리스트를 `late` 키워드를 사용하여 나중에 초기화
+  late List<FoodItem> _foodItems;
+
   bool _isLoading = true;
 
   // 장보기 목록 상태 변수 추가
@@ -40,6 +43,31 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    // `initState` 메서드에서 `_foodItems`를 초기화합니다.
+    _foodItems = [
+      FoodItem(
+        id: _uuid.v4(),
+        name: '소고기',
+        imageUrl: 'assets/images/beef.png',
+        quantity: 500,
+        unit: Unit.grams,
+        expiryDate: DateTime.now().add(const Duration(days: 11)),
+        stockedDate: DateTime.now().subtract(const Duration(days: 3)),
+        storage: StorageType.fridge,
+        category: FoodCategory.meat,
+      ),
+      FoodItem(
+        id: _uuid.v4(),
+        name: '아보카도',
+        imageUrl: 'assets/images/avocado.png',
+        quantity: 2,
+        unit: Unit.count,
+        expiryDate: DateTime.now().add(const Duration(days: 6)),
+        stockedDate: DateTime.now().subtract(const Duration(days: 1)),
+        storage: StorageType.fridge,
+        category: FoodCategory.fruit,
+      ),
+    ];
     _fetchFoodItems();
   }
 
@@ -238,16 +266,19 @@ class _HomePageState extends State<HomePage> {
                   child: const Text('유통기한 임박 식품', style: kCardTitleTextStyle),
                 ),
                 const SizedBox(height: 20),
-                // [수정] _isLoading 상태에 따라 로딩 인디케이터 또는 데이터를 표시
-                _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: _buildExpiringFoodItems(),
+                SizedBox(
+                  height: 70,
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _foodItems.isEmpty
+                      ? const Text('식품 목록이 없습니다.')
+                      : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: _buildExpiringFoodItems(),
+                  ),
                 ),
                 const SizedBox(height: 10),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
                   children: [
                     ElevatedButton(
                       onPressed: () {
@@ -260,9 +291,9 @@ class _HomePageState extends State<HomePage> {
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                      child: const Text('냉장고 확인하기', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                      child: const Text('냉장고 확인', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(width: 10),
                     ElevatedButton(
                       onPressed: () {
                         (bottomNavKey.currentState as dynamic)?.onItemTapped(2);
@@ -277,7 +308,7 @@ class _HomePageState extends State<HomePage> {
                       child: const Text('추천요리', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                     ),
                   ],
-                ),
+                )
               ],
             ),
           ),
@@ -298,21 +329,51 @@ class _HomePageState extends State<HomePage> {
                   child: const Text('장보기 목록', style: kCardTitleTextStyle),
                 ),
                 const SizedBox(height: 10),
-                // 수정된 장보기 목록을 표시
-                ..._shoppingItems.take(3).map((item) => _shoppingItem(item.name, checked: item.isChecked)).toList(),
-                if (_shoppingItems.length > 2)
-                  TextButton(
-                    onPressed: () {
-                      _showAppModal(
-                        context,
-                        ShoppingListModal(initialItems: _shoppingItems.map((e) => e.name).toList()),
-                        isScrollControlled: true,
-                      );
-                    },
-                    child: const Text('전체보기', style: TextStyle(color: kGreyColor)),
-                  ),
-                if (_shoppingItems.isEmpty)
-                  const Text('장보기 목록이 없습니다.', style: TextStyle(color: kGreyColor)),
+                ...List.generate(2, (index) {
+                  if (index < _shoppingItems.length) {
+                    final item = _shoppingItems[index];
+                    return _shoppingItem(item.name, checked: item.isChecked);
+                  } else {
+                    return _shoppingItem('―', checked: false);
+                  }
+                }),
+                Row(
+                  children: [
+                    Transform.scale(
+                      scale: 0.8,
+                      child: Checkbox(
+                        value: false,
+                        onChanged: (val) {
+                          _showAppModal(
+                            context,
+                            ShoppingListModal(initialItems: _shoppingItems.map((e) => e.name).toList()),
+                            isScrollControlled: true,
+                          );
+                        },
+                        activeColor: Colors.blue[100],
+                        side: MaterialStateBorderSide.resolveWith(
+                              (states) => BorderSide(width: 1.0, color: Colors.grey[400]!),
+                        ),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                    const SizedBox(width: 0),
+                    TextButton(
+                      onPressed: () {
+                        _showAppModal(
+                          context,
+                          ShoppingListModal(initialItems: _shoppingItems.map((e) => e.name).toList()),
+                          isScrollControlled: true,
+                        );
+                      },
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        alignment: Alignment.centerLeft,
+                      ),
+                      child: const Text('전체보기', style: TextStyle(color: kGreyColor)),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -321,21 +382,22 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // [수정] 유통기한 필터링 없이 전체 목록 중 유통기한이 가장 짧은 2개를 보여주는 함수
   List<Widget> _buildExpiringFoodItems() {
     final sortedItems = [..._foodItems];
 
-    sortedItems.sort((a, b) => a.expiryDate.compareTo(b.expiryDate));
-
     if (sortedItems.isEmpty) {
-      return [const Text('식품 목록이 없습니다.')];
+      return [
+        const SizedBox(height: 50),
+      ];
     }
+
+    sortedItems.sort((a, b) => a.expiryDate.compareTo(b.expiryDate));
 
     return sortedItems
         .take(2)
         .map((item) {
       final diff = item.expiryDate.difference(DateTime.now()).inDays;
-      final dDayText = diff == 0 ? 'D-Day' : 'D-$diff';
+      final dDayText = diff < 0 ? 'D+${diff.abs()}' : (diff == 0 ? 'D-Day' : 'D-$diff');
       return Padding(
         padding: const EdgeInsets.only(bottom: 8.0),
         child: _expiringFoodItem(item.name, dDayText),
