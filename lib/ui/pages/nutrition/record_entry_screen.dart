@@ -240,7 +240,7 @@ class _RecordEntryScreenState extends State<RecordEntryScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 24), // ✅ 이미지 제거했으므로 대신 공간 확보
-            const Icon(Icons.fastfood, size: 80, color: Colors.grey),
+
             const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.all(20),
