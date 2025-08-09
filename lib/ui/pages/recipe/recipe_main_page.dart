@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+
 import 'package:smart_fridge_system/data/models/recipe_model.dart';
 import 'recipe_detail_page.dart';
 
@@ -14,6 +15,7 @@ class RecipeMainPage extends StatefulWidget {
 class _RecipeMainPageState extends State<RecipeMainPage> {
   final TextEditingController _searchController = TextEditingController();
   String _sortOption = '추천 레시피 순';
+
   bool _isLoading = false;
   List<Recipe> recipes = [];
 
@@ -143,17 +145,12 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
   // ---------------- UI ----------------
   @override
   Widget build(BuildContext context) {
-    final query = FirebaseFirestore.instance
-        .collection('recipes')
-        .orderBy('name');
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
             const SizedBox(height: 32),
-            // 상단 타이틀
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
@@ -183,7 +180,6 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: TextField(
                 controller: _searchController,
-                onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
                   contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                   hintText: '레시피명을 검색하세요. (예: 김치볶음밥, 된장찌개)',
@@ -273,6 +269,7 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
               ),
             ),
             const SizedBox(height: 8),
+
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator(color: Color(0xFF003508)))
@@ -318,6 +315,7 @@ class RecipeCard extends StatelessWidget {
   final String ingredients;
   final int timeMinutes;
   final double kcal;
+
   const RecipeCard({
     super.key,
     required this.imagePath,
@@ -348,6 +346,7 @@ class RecipeCard extends StatelessWidget {
         errorBuilder: (_, __, ___) => _ph(),
       );
     }
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 12),
       padding: const EdgeInsets.all(16),
@@ -372,7 +371,7 @@ class RecipeCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title.isEmpty ? '(제목 없음)' : title,
+                  title,
                   style: const TextStyle(
                     fontFamily: 'Pretendard Variable',
                     fontWeight: FontWeight.w700,
@@ -383,8 +382,6 @@ class RecipeCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontFamily: 'Pretendard Variable',
                     fontWeight: FontWeight.w400,
