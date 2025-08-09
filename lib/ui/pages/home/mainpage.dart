@@ -1,5 +1,3 @@
-// FILE: lib/ui/pages/home/mainpage.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:smart_fridge_system/constants/app_constants.dart';
@@ -9,6 +7,7 @@ import 'package:smart_fridge_system/ui/pages/home/shopping_list_modal.dart';
 import 'package:smart_fridge_system/ui/widgets/bottom_nav.dart';
 import 'package:smart_fridge_system/data/repositories/food_repository.dart';
 import 'package:smart_fridge_system/data/models/food_item.dart';
+import 'package:uuid/uuid.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -25,9 +24,11 @@ class _HomePageState extends State<HomePage> {
   double _fridgeTemp = 3.0;
   double _fridgeHumidity = 60.0;
   String _fridgeGasStatus = "정상";
+  final Uuid _uuid = Uuid();
 
-  // FoodRepository를 통해 가져온 식품 목록
-  List<FoodItem> _foodItems = [];
+  // `_foodItems` 리스트를 `late` 키워드를 사용하여 나중에 초기화
+  late List<FoodItem> _foodItems;
+
   bool _isLoading = true;
 
   // 장보기 목록 상태 변수 추가
@@ -40,6 +41,31 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    // `initState` 메서드에서 `_foodItems`를 초기화합니다.
+    _foodItems = [
+      FoodItem(
+        id: _uuid.v4(),
+        name: '소고기',
+        imageUrl: 'assets/images/beef.png',
+        quantity: 500,
+        unit: Unit.grams,
+        expiryDate: DateTime.now().add(const Duration(days: 2)), // D-day 테스트를 위해 수정
+        stockedDate: DateTime.now().subtract(const Duration(days: 3)),
+        storage: StorageType.fridge,
+        category: FoodCategory.meat,
+      ),
+      FoodItem(
+        id: _uuid.v4(),
+        name: '아보카도',
+        imageUrl: 'assets/images/avocado.png',
+        quantity: 2,
+        unit: Unit.count,
+        expiryDate: DateTime.now().add(const Duration(days: 8)), // D-day 테스트를 위해 수정
+        stockedDate: DateTime.now().subtract(const Duration(days: 1)),
+        storage: StorageType.fridge,
+        category: FoodCategory.fruit,
+      ),
+    ];
     _fetchFoodItems();
   }
 
@@ -238,16 +264,19 @@ class _HomePageState extends State<HomePage> {
                   child: const Text('유통기한 임박 식품', style: kCardTitleTextStyle),
                 ),
                 const SizedBox(height: 20),
-                // [수정] _isLoading 상태에 따라 로딩 인디케이터 또는 데이터를 표시
-                _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: _buildExpiringFoodItems(),
+                SizedBox(
+                  height: 70,
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _foodItems.isEmpty
+                      ? const Text('식품 목록이 없습니다.')
+                      : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: _buildExpiringFoodItems(),
+                  ),
                 ),
                 const SizedBox(height: 10),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
                   children: [
                     ElevatedButton(
                       onPressed: () {
@@ -260,9 +289,9 @@ class _HomePageState extends State<HomePage> {
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                      child: const Text('냉장고 확인하기', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                      child: const Text('냉장고 확인', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(width: 10),
                     ElevatedButton(
                       onPressed: () {
                         (bottomNavKey.currentState as dynamic)?.onItemTapped(2);
@@ -277,7 +306,7 @@ class _HomePageState extends State<HomePage> {
                       child: const Text('추천요리', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                     ),
                   ],
-                ),
+                )
               ],
             ),
           ),
@@ -298,21 +327,51 @@ class _HomePageState extends State<HomePage> {
                   child: const Text('장보기 목록', style: kCardTitleTextStyle),
                 ),
                 const SizedBox(height: 10),
-                // 수정된 장보기 목록을 표시
-                ..._shoppingItems.take(3).map((item) => _shoppingItem(item.name, checked: item.isChecked)).toList(),
-                if (_shoppingItems.length > 2)
-                  TextButton(
-                    onPressed: () {
-                      _showAppModal(
-                        context,
-                        ShoppingListModal(initialItems: _shoppingItems.map((e) => e.name).toList()),
-                        isScrollControlled: true,
-                      );
-                    },
-                    child: const Text('전체보기', style: TextStyle(color: kGreyColor)),
-                  ),
-                if (_shoppingItems.isEmpty)
-                  const Text('장보기 목록이 없습니다.', style: TextStyle(color: kGreyColor)),
+                ...List.generate(2, (index) {
+                  if (index < _shoppingItems.length) {
+                    final item = _shoppingItems[index];
+                    return _shoppingItem(item.name, checked: item.isChecked);
+                  } else {
+                    return _shoppingItem('―', checked: false);
+                  }
+                }),
+                Row(
+                  children: [
+                    Transform.scale(
+                      scale: 0.8,
+                      child: Checkbox(
+                        value: false,
+                        onChanged: (val) {
+                          _showAppModal(
+                            context,
+                            ShoppingListModal(initialItems: _shoppingItems),
+                            isScrollControlled: true,
+                          );
+                        },
+                        activeColor: Colors.blue[100],
+                        side: MaterialStateBorderSide.resolveWith(
+                              (states) => BorderSide(width: 1.0, color: Colors.grey[400]!),
+                        ),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                    const SizedBox(width: 0),
+                    TextButton(
+                      onPressed: () {
+                        _showAppModal(
+                          context,
+                          ShoppingListModal(initialItems: _shoppingItems),
+                          isScrollControlled: true,
+                        );
+                      },
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        alignment: Alignment.centerLeft,
+                      ),
+                      child: const Text('전체보기', style: TextStyle(color: kGreyColor)),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -321,41 +380,62 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // [수정] 유통기한 필터링 없이 전체 목록 중 유통기한이 가장 짧은 2개를 보여주는 함수
+  // --- ⭐️ 수정된 함수: _buildExpiringFoodItems ---
   List<Widget> _buildExpiringFoodItems() {
     final sortedItems = [..._foodItems];
 
-    sortedItems.sort((a, b) => a.expiryDate.compareTo(b.expiryDate));
-
     if (sortedItems.isEmpty) {
-      return [const Text('식품 목록이 없습니다.')];
+      return [
+        const SizedBox(height: 50),
+      ];
     }
+
+    sortedItems.sort((a, b) => a.expiryDate.compareTo(b.expiryDate));
 
     return sortedItems
         .take(2)
         .map((item) {
+      // D-day를 숫자 형태로 계산합니다.
       final diff = item.expiryDate.difference(DateTime.now()).inDays;
-      final dDayText = diff == 0 ? 'D-Day' : 'D-$diff';
+      final dDayText = diff < 0 ? 'D+${diff.abs()}' : (diff == 0 ? 'D-Day' : 'D-$diff');
+
       return Padding(
         padding: const EdgeInsets.only(bottom: 8.0),
-        child: _expiringFoodItem(item.name, dDayText),
+        // 숫자 형태의 D-day(diff)도 함께 전달합니다.
+        child: _expiringFoodItem(dDayText, item.name, diff),
       );
     }).toList();
   }
 
-  Widget _expiringFoodItem(String name, String dDay) {
+  // --- ⭐️ 수정된 함수: _expiringFoodItem ---
+  // 함수의 인자로 숫자 D-day(dDayValue)를 추가합니다.
+  Widget _expiringFoodItem(String dDayText, String name, int dDayValue) {
+    // D-day 값에 따라 색상을 결정합니다.
+    Color dDayColor;
+    if (dDayValue <= 3) {
+      dDayColor = kWarningColor; // D-3 이하: 위험
+    } else if (dDayValue <= 10) {
+      dDayColor = Colors.orange; // D-10 이하: 주의 (AppColors에 맞게 수정)
+    } else {
+      dDayColor = Colors.green;  // 그 외: 안전 (AppColors에 맞게 수정)
+    }
+
     return Row(
       children: [
-        Text(name, style: kBodyTextStyle),
-        const SizedBox(width: 8),
         Container(
+          width: 55, // D-day 텍스트 너비를 고정하여 정렬을 맞춥니다.
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            border: Border.all(color: kWarningColor),
-            borderRadius: BorderRadius.circular(12),
+          child: Text(
+            dDayText,
+            style: TextStyle(
+              color: dDayColor, // 위에서 결정된 색상 적용
+              fontSize: 16,     // 폰트 크기 적용
+              fontWeight: FontWeight.bold, // 폰트 굵기 적용
+            ),
           ),
-          child: Text(dDay, style: const TextStyle(color: kWarningColor)),
         ),
+        const SizedBox(width: 8),
+        Text(name, style: kBodyTextStyle),
       ],
     );
   }

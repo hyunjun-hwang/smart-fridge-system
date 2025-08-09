@@ -29,7 +29,7 @@ class _BottomNavState extends State<BottomNav> {
     const ProfileScreen(),
   ];
 
-  void _onItemTapped(int index) {
+  void onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
@@ -102,7 +102,7 @@ class _BottomNavState extends State<BottomNav> {
           ),
         ],
         currentIndex: _selectedIndex,
-        onTap: _onItemTapped, // 함수 이름 변경 반영
+        onTap: onItemTapped, // 함수 이름 변경 반영
         backgroundColor: AppColors.accent,
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.white,
