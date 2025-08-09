@@ -1,4 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
 import 'package:smart_fridge_system/data/models/recipe_model.dart';
 import 'recipe_detail_page.dart';
 
@@ -13,58 +16,133 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
   final TextEditingController _searchController = TextEditingController();
   String _sortOption = '추천 레시피 순';
 
-  final List<Recipe> recipes = [
-    Recipe(
-      title: '아보카도 샐러드',
-      description: '아보카도로 만든 샐러드',
-      imagePath: 'assets/images/avocado_salad.jpg',
-      time: 25,
-      kcal: 350,
-      carb: 183.5,
-      protein: 154,
-      fat: 50,
-      ingredients: {
-        '아보카도 3개': true,
-        '바나나 1개': true,
-        '골드키위': false,
-        '로메인': false,
-        '발사믹 글레이즈': true,
-        '후춧가루': true,
-      },
-      steps: [
-        '블루베리를 제외한 모든 과일과 로메인은 비슷한 크기로 썰어준다',
-        '접시에 로메인을 먼저 깔아준다',
-        '아보카도와 과일을 골고루 뿌리듯 올려준다',
-        '리코타치즈를 떠서 올려주고 올리브오일을 골고루 뿌린 후 소금과 후춧가루를 뿌려준다',
-        '마지막에 발사믹소스를 뿌려준다',
-      ],
-    ),
-    Recipe(
-      title: '바나나 팬케이크',
-      description: '아이들이 좋아하는 팬케이크',
-      imagePath: 'assets/images/banana_pancake.jpg',
-      time: 20,
-      kcal: 320,
-      carb: 90,
-      protein: 60,
-      fat: 40,
-      ingredients: {'바나나 2개': true, '핫케이크 믹스': true},
-      steps: ['재료를 섞고 굽는다'],
-    ),
-    Recipe(
-      title: '샐러드',
-      description: '다이어트용',
-      imagePath: 'assets/images/salad_diet.jpg',
-      time: 15,
-      kcal: 200,
-      carb: 60,
-      protein: 30,
-      fat: 10,
-      ingredients: {'상추': true, '파스타': false},
-      steps: ['재료를 섞는다'],
-    ),
-  ];
+  bool _isLoading = false;
+  List<Recipe> recipes = [];
 
+  // ✅ 경로형 포맷 정보
+  static const String _keyId = 'ff4910709e05408eba7c';
+  static const String _base = 'http://openapi.foodsafetykorea.go.kr/api';
+  static const String _serviceId = 'COOKRCP01'; // 레시피(조리순서/칼로리/이미지)
+  static const String _dataType = 'json';
+
+  Future<void> _fetchRecipes(String keyword) async {
+    if (keyword.trim().isEmpty) return;
+    setState(() => _isLoading = true);
+
+    final q = Uri.encodeComponent(keyword.trim());
+    // 경로형 포맷: /api/keyId/serviceId/dataType/startIdx/endIdx/RCP_NM=검색어
+    const startIdx = 1;
+    const endIdx = 10;
+    final url = Uri.parse('$_base/$_keyId/$_serviceId/$_dataType/$startIdx/$endIdx/RCP_NM=$q');
+
+    try {
+      final res = await http.get(url);
+      final bodyStr = utf8.decode(res.bodyBytes);
+
+      if (res.statusCode != 200) {
+        throw Exception('HTTP ${res.statusCode}');
+      }
+
+      final root = jsonDecode(bodyStr);
+      final rows = root['COOKRCP01']?['row'] as List?;
+      if (rows == null || rows.isEmpty) {
+        if (mounted) {
+          setState(() => recipes = []);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('검색 결과가 없습니다.')),
+          );
+        }
+        return;
+      }
+
+      final mapped = <Recipe>[];
+      for (final r0 in rows) {
+        if (r0 is! Map) continue;
+        final r = r0 as Map<String, dynamic>;
+
+        final title = (r['RCP_NM'] ?? '').toString().trim();
+        final img = (r['ATT_FILE_NO_MAIN'] ?? '').toString().trim();
+
+        // ✅ kcal: INFO_ENG (문자열일 수 있으니 double로 파싱)
+        final kcalStr = (r['INFO_ENG'] ?? '').toString().trim();
+        final kcalDouble = double.tryParse(kcalStr) ?? 0;
+        final kcalVal = kcalDouble.round(); // Recipe.kcal이 int라면 반올림 저장
+
+        // ✅ 탄단지: 실제 키 이름 사용 (INFO_CAR, INFO_PRO, INFO_FAT)
+        final carbStr = (r['INFO_CAR'] ?? '').toString().trim();
+        final proteinStr = (r['INFO_PRO'] ?? '').toString().trim();
+        final fatStr = (r['INFO_FAT'] ?? '').toString().trim();
+
+        final carbVal = double.tryParse(carbStr) ?? 0;
+        final proteinVal = double.tryParse(proteinStr) ?? 0;
+        final fatVal = double.tryParse(fatStr) ?? 0;
+
+        // ✅ 조리 순서
+        final steps = <String>[];
+        for (int i = 1; i <= 20; i++) {
+          final key = 'MANUAL${i.toString().padLeft(2, '0')}';
+          final step = (r[key] ?? '').toString().trim();
+          if (step.isNotEmpty) steps.add(step);
+        }
+
+        // ✅ 재료(상세 텍스트) 간단 분해
+        final parts = (r['RCP_PARTS_DTLS'] ?? '').toString().trim();
+        final Map<String, bool> ing = {};
+        if (parts.isNotEmpty) {
+          final tokens = parts
+              .split(RegExp(r'[,|\n]'))
+              .map((s) => s.trim())
+              .where((s) => s.isNotEmpty);
+          for (final t in tokens) {
+            final k = t.length > 40 ? '${t.substring(0, 40)}…' : t;
+            ing[k] = true;
+          }
+        } else if (title.isNotEmpty) {
+          ing[title] = true;
+        }
+
+        mapped.add(
+          Recipe(
+            title: title.isEmpty ? '이름 없음' : title,
+            description: (r['RCP_PAT2'] ?? '레시피').toString(),
+            imagePath: img.isEmpty ? 'assets/images/placeholder_food.jpg' : img,
+            time: 0,              // 명확한 시간 필드 없음
+            kcal: kcalVal,        // int 저장
+            carb: carbVal,        // double
+            protein: proteinVal,  // double
+            fat: fatVal,          // double
+            ingredients: ing,
+            steps: steps,
+          ),
+        );
+      }
+
+      // ✅ 정렬
+      if (_sortOption == '칼로리 순') {
+        mapped.sort((a, b) => a.kcal.compareTo(b.kcal));
+      } else {
+        mapped.sort((a, b) => a.title.compareTo(b.title));
+      }
+
+      if (mounted) setState(() => recipes = mapped);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('호출 실패: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  // ---------------- UI ----------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -96,13 +174,15 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
               ),
             ),
             const SizedBox(height: 16),
+
+            // 검색창
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
                   contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                  hintText: '여기에 검색하세요.',
+                  hintText: '레시피명을 검색하세요. (예: 김치볶음밥, 된장찌개)',
                   hintStyle: const TextStyle(
                     fontFamily: 'Pretendard Variable',
                     fontSize: 14,
@@ -118,9 +198,12 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
                     borderSide: const BorderSide(color: Color(0xFF003508), width: 2),
                   ),
                 ),
+                onSubmitted: (kw) => _fetchRecipes(kw),
               ),
             ),
             const SizedBox(height: 12),
+
+            // 정렬 + 검색 버튼
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
@@ -129,18 +212,23 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
                     onSelected: (String value) {
                       setState(() {
                         _sortOption = value;
+                        if (_sortOption == '칼로리 순') {
+                          recipes.sort((a, b) => a.kcal.compareTo(b.kcal));
+                        } else {
+                          recipes.sort((a, b) => a.title.compareTo(b.title));
+                        }
                       });
                     },
-                    itemBuilder: (BuildContext context) => [
-                      const PopupMenuItem<String>(
+                    itemBuilder: (BuildContext context) => const [
+                      PopupMenuItem<String>(
                         value: '추천 레시피 순',
                         child: Text('추천 레시피 순'),
                       ),
-                      const PopupMenuItem<String>(
+                      PopupMenuItem<String>(
                         value: '칼로리 순',
                         child: Text('칼로리 순'),
                       ),
-                      const PopupMenuItem<String>(
+                      PopupMenuItem<String>(
                         value: '유통기한 임박 순',
                         child: Text('유통기한 임박 순'),
                       ),
@@ -160,12 +248,34 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
                       ],
                     ),
                   ),
+                  const Spacer(),
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : () => _fetchRecipes(_searchController.text),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF003508),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                        : const Text('검색'),
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 8),
+
             Expanded(
-              child: ListView.builder(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator(color: Color(0xFF003508)))
+                  : (recipes.isEmpty
+                  ? const Center(child: Text('검색 결과가 없습니다.'))
+                  : ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: recipes.length,
                 itemBuilder: (context, index) {
@@ -184,10 +294,12 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
                       title: recipe.title,
                       subtitle: recipe.description,
                       ingredients: recipe.ingredients.keys.join(', '),
+                      timeMinutes: recipe.time,
+                      kcal: recipe.kcal.toDouble(), // 카드 표시에 double 사용
                     ),
                   );
                 },
-              ),
+              )),
             ),
           ],
         ),
@@ -201,6 +313,8 @@ class RecipeCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final String ingredients;
+  final int timeMinutes;
+  final double kcal;
 
   const RecipeCard({
     super.key,
@@ -208,10 +322,31 @@ class RecipeCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.ingredients,
+    required this.timeMinutes,
+    required this.kcal,
   });
 
   @override
   Widget build(BuildContext context) {
+    Widget img;
+    if (imagePath.startsWith('http')) {
+      img = Image.network(
+        imagePath,
+        width: 100,
+        height: 100,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _ph(),
+      );
+    } else {
+      img = Image.asset(
+        imagePath,
+        width: 100,
+        height: 100,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _ph(),
+      );
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 12),
       padding: const EdgeInsets.all(16),
@@ -229,15 +364,7 @@ class RecipeCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Image.asset(
-              imagePath,
-              width: 100,
-              height: 100,
-              fit: BoxFit.cover,
-            ),
-          ),
+          ClipRRect(borderRadius: BorderRadius.circular(16), child: img),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -264,7 +391,7 @@ class RecipeCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  '재료',
+                  '재료(요약)',
                   style: TextStyle(
                     fontFamily: 'Pretendard Variable',
                     fontWeight: FontWeight.w600,
@@ -274,7 +401,7 @@ class RecipeCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  ingredients,
+                  ingredients.isEmpty ? '-' : ingredients,
                   softWrap: true,
                   overflow: TextOverflow.ellipsis,
                   maxLines: 2,
@@ -287,14 +414,20 @@ class RecipeCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Row(
-                  children: const [
-                    Icon(Icons.access_time, size: 16, color: Color(0xFF003508)),
-                    SizedBox(width: 4),
-                    Text('25분', style: TextStyle(fontSize: 13, color: Color(0xFF003508))),
-                    SizedBox(width: 16),
-                    Icon(Icons.local_fire_department, size: 16, color: Color(0xFF003508)),
-                    SizedBox(width: 4),
-                    Text('350kcal', style: TextStyle(fontSize: 13, color: Color(0xFF003508))),
+                  children: [
+                    const Icon(Icons.access_time, size: 16, color: Color(0xFF003508)),
+                    const SizedBox(width: 4),
+                    Text(
+                      timeMinutes > 0 ? '${timeMinutes}분' : '-',
+                      style: const TextStyle(fontSize: 13, color: Color(0xFF003508)),
+                    ),
+                    const SizedBox(width: 16),
+                    const Icon(Icons.local_fire_department, size: 16, color: Color(0xFF003508)),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${kcal.toStringAsFixed(0)}kcal',
+                      style: const TextStyle(fontSize: 13, color: Color(0xFF003508)),
+                    ),
                   ],
                 ),
               ],
@@ -304,4 +437,12 @@ class RecipeCard extends StatelessWidget {
       ),
     );
   }
+
+  Widget _ph() => Container(
+    width: 100,
+    height: 100,
+    color: const Color(0xFFEFEFEF),
+    alignment: Alignment.center,
+    child: const Icon(Icons.image_not_supported, color: Colors.grey),
+  );
 }

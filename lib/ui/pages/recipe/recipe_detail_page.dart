@@ -20,7 +20,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       body: SafeArea(
         child: Column(
           children: [
-            _TopBar(),
+            const _TopBar(),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -55,7 +55,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                 builder: (context) {
                   String tempSelectedMeal = selectedMeal;
                   final meals = [
-                    {'label': '아침', 'kcal': '100kcal'},
+                    {'label': '아침', 'kcal': '${widget.recipe.kcal.toStringAsFixed(0)}kcal'},
                     {'label': '점심', 'kcal': '0kcal'},
                     {'label': '저녁', 'kcal': '0kcal'},
                     {'label': '아침 간식', 'kcal': '0kcal'},
@@ -203,7 +203,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   }
 }
 
-              class _TopBar extends StatelessWidget {
+class _TopBar extends StatelessWidget {
   const _TopBar();
 
   @override
@@ -239,17 +239,43 @@ class _RecipeHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 매크로 비율 막대 안전 처리
+    final double c = (recipe.carb).clamp(0, double.infinity);
+    final double p = (recipe.protein).clamp(0, double.infinity);
+    final double f = (recipe.fat).clamp(0, double.infinity);
+    final double total = (c + p + f);
+    int flexC = 1, flexP = 1, flexF = 1;
+    if (total > 0) {
+      flexC = ((c / total) * 100).round().clamp(1, 100);
+      flexP = ((p / total) * 100).round().clamp(1, 100);
+      flexF = ((f / total) * 100).round().clamp(1, 100);
+    }
+
+    Widget imageWidget;
+    if (recipe.imagePath.startsWith('http')) {
+      imageWidget = Image.network(
+        recipe.imagePath,
+        width: 150,
+        height: 200,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _imagePlaceholder(),
+      );
+    } else {
+      imageWidget = Image.asset(
+        recipe.imagePath,
+        width: 150,
+        height: 200,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _imagePlaceholder(),
+      );
+    }
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: Image.asset(
-            recipe.imagePath,
-            width: 150,
-            height: 200,
-            fit: BoxFit.cover,
-          ),
+          child: imageWidget,
         ),
         const SizedBox(width: 20),
         Expanded(
@@ -270,11 +296,15 @@ class _RecipeHeader extends StatelessWidget {
                 children: [
                   const Icon(Icons.access_time, size: 18, color: Color(0xFF003508)),
                   const SizedBox(width: 4),
-                  Text('${recipe.time}분', style: const TextStyle(color: Color(0xFF003508))),
+                  Text(
+                    recipe.time > 0 ? '${recipe.time}분' : '-',
+                    style: const TextStyle(color: Color(0xFF003508)),
+                  ),
                   const SizedBox(width: 12),
                   const Icon(Icons.local_fire_department, size: 18, color: Color(0xFF003508)),
                   const SizedBox(width: 4),
-                  Text('${recipe.kcal}kcal', style: const TextStyle(color: Color(0xFF003508))),
+                  Text('${recipe.kcal.toStringAsFixed(0)}kcal',
+                      style: const TextStyle(color: Color(0xFF003508))),
                 ],
               ),
               const SizedBox(height: 16),
@@ -286,9 +316,9 @@ class _RecipeHeader extends StatelessWidget {
                 clipBehavior: Clip.hardEdge,
                 child: Row(
                   children: [
-                    Expanded(flex: recipe.carb.round(), child: Container(color: const Color(0xFFD0E7FF))),
-                    Expanded(flex: recipe.protein.round(), child: Container(color: const Color(0xFFD6ECC9))),
-                    Expanded(flex: recipe.fat.round(), child: Container(color: const Color(0xFFBFD9D2))),
+                    Expanded(flex: flexC, child: Container(color: const Color(0xFFD0E7FF))),
+                    Expanded(flex: flexP, child: Container(color: const Color(0xFFD6ECC9))),
+                    Expanded(flex: flexF, child: Container(color: const Color(0xFFBFD9D2))),
                   ],
                 ),
               ),
@@ -298,6 +328,16 @@ class _RecipeHeader extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _imagePlaceholder() {
+    return Container(
+      width: 150,
+      height: 200,
+      color: const Color(0xFFEFEFEF),
+      alignment: Alignment.center,
+      child: const Icon(Icons.image_not_supported, color: Colors.grey),
     );
   }
 }
@@ -310,9 +350,9 @@ class _NutrientRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _NutrientItem('탄수화물', '${recipe.carb}g', const Color(0xFFD0E7FF)),
-        _NutrientItem('단백질', '${recipe.protein}g', const Color(0xFFD6ECC9)),
-        _NutrientItem('지방', '${recipe.fat}g', const Color(0xFFBFD9D2)),
+        _NutrientItem('탄수화물', '${recipe.carb.toStringAsFixed(1)}g', const Color(0xFFD0E7FF)),
+        _NutrientItem('단백질', '${recipe.protein.toStringAsFixed(1)}g', const Color(0xFFD6ECC9)),
+        _NutrientItem('지방', '${recipe.fat.toStringAsFixed(1)}g', const Color(0xFFBFD9D2)),
       ],
     );
   }
@@ -363,6 +403,7 @@ class _Ingredients extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasIngredients = recipe.ingredients.isNotEmpty;
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -392,31 +433,37 @@ class _Ingredients extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          Wrap(
-            spacing: 40,
-            runSpacing: 16,
-            children: recipe.ingredients.entries.map((entry) {
-              return Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    entry.key,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontFamily: 'Pretendard Variable',
-                      color: Color(0xFF003508),
+          if (!hasIngredients)
+            const Text(
+              '재료 정보가 없습니다.',
+              style: TextStyle(color: Colors.grey),
+            )
+          else
+            Wrap(
+              spacing: 40,
+              runSpacing: 16,
+              children: recipe.ingredients.entries.map((entry) {
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      entry.key,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontFamily: 'Pretendard Variable',
+                        color: Color(0xFF003508),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  Icon(
-                    entry.value ? Icons.check : Icons.clear,
-                    size: 20,
-                    color: entry.value ? const Color(0xFFC7DDB3) : const Color(0xFFFF8C7C),
-                  ),
-                ],
-              );
-            }).toList(),
-          ),
+                    const SizedBox(width: 6),
+                    Icon(
+                      entry.value ? Icons.check : Icons.clear,
+                      size: 20,
+                      color: entry.value ? const Color(0xFFC7DDB3) : const Color(0xFFFF8C7C),
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
         ],
       ),
     );
@@ -429,6 +476,7 @@ class _RecipeSteps extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasSteps = recipe.steps.isNotEmpty;
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(top: 12),
@@ -453,54 +501,70 @@ class _RecipeSteps extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          Column(
-            children: recipe.steps.asMap().entries.map((entry) {
-              final index = entry.key;
-              final step = entry.value;
+          if (!hasSteps)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9FBF5),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFD6E2C0)),
+              ),
+              child: const Text(
+                '조리 단계 정보가 없습니다.',
+                style: TextStyle(color: Colors.grey),
+              ),
+            )
+          else
+            Column(
+              children: recipe.steps.asMap().entries.map((entry) {
+                final index = entry.key;
+                final step = entry.value;
 
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 26,
-                      height: 26,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: const Color(0xFFBFD9D2)),
-                        shape: BoxShape.circle,
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        '${index + 1}',
-                        style: const TextStyle(
-                          color: Color(0xFF003508),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 26,
+                        height: 26,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: const Color(0xFFBFD9D2)),
+                          shape: BoxShape.circle,
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '${index + 1}',
+                          style: const TextStyle(
+                            color: Color(0xFF003508),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        step,
-                        style: const TextStyle(
-                          fontFamily: 'Pretendard Variable',
-                          fontSize: 15,
-                          color: Color(0xFF003508),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          step,
+                          style: const TextStyle(
+                            fontFamily: 'Pretendard Variable',
+                            fontSize: 15,
+                            color: Color(0xFF003508),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
         ],
       ),
     );
   }
 }
+
 class _MealChip extends StatelessWidget {
   final String label;
   final bool isSelected;
