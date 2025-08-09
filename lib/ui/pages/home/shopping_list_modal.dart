@@ -1,3 +1,5 @@
+// FILE: shopping_list_modal.dart
+
 import 'package:flutter/material.dart';
 
 class ShoppingItem {
@@ -5,12 +7,11 @@ class ShoppingItem {
   String name;
   bool isChecked;
 
-  ShoppingItem(
-      {required this.id, required this.name, this.isChecked = false});
+  ShoppingItem({required this.id, required this.name, this.isChecked = false});
 }
 
 class ShoppingListModal extends StatefulWidget {
-  final List<String> initialItems;
+  final List<ShoppingItem> initialItems;
   const ShoppingListModal({super.key, this.initialItems = const []});
 
   @override
@@ -26,12 +27,10 @@ class _ShoppingListModalState extends State<ShoppingListModal> {
   @override
   void initState() {
     super.initState();
-    // 초기 아이템으로 리스트 구성
-    int idCounter = 0;
-    for (var name in widget.initialItems) {
-      _shoppingList
-          .add(ShoppingItem(id: idCounter++, name: name, isChecked: name == "복숭아"));
-    }
+    // [✓] 전달받은 아이템 리스트로 _shoppingList를 초기화
+    // map을 사용하여 새로운 리스트를 생성함으로써, 모달 내의 변경사항이 '닫기'를 누르기 전까지 메인 페이지에 영향을 주지 않도록 합니다.
+    _shoppingList.addAll(widget.initialItems.map(
+            (item) => ShoppingItem(id: item.id, name: item.name, isChecked: item.isChecked)));
   }
 
   @override
@@ -96,23 +95,19 @@ class _ShoppingListModalState extends State<ShoppingListModal> {
                     style:
                     TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
             const SizedBox(height: 20),
-            Row(
-              children: [
-                Icon(Icons.info_outline, color: Colors.grey[600], size: 20),
-                const SizedBox(width: 8),
-                Text('현재 냉장고에 우유가 없습니다.',
-                    style: TextStyle(fontSize: 15, color: Colors.grey[700])),
-              ],
-            ),
-            const SizedBox(height: 10),
             Flexible(
               child: ListView.builder(
                 shrinkWrap: true,
                 itemCount: _shoppingList.length + 1, // '추가하기' 포함
                 itemBuilder: (context, index) {
                   if (index == _shoppingList.length) {
-                    // 리스트의 마지막 항목: 추가하기 또는 입력 필드
-                    return _buildAddItemTile();
+                    // 마지막 항목일 때 위쪽에 간격을 추가합니다.
+                    return Column(
+                      children: [
+                        const SizedBox(height: 10), // 원하는 간격 크기로 조절
+                        _buildAddItemTile(),
+                      ],
+                    );
                   }
                   final item = _shoppingList[index];
                   return _buildShoppingItemTile(item);
@@ -121,7 +116,9 @@ class _ShoppingListModalState extends State<ShoppingListModal> {
             ),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () {
+                Navigator.pop(context, _shoppingList);
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFCBD6AB),
                 minimumSize: const Size(double.infinity, 50),
@@ -175,10 +172,8 @@ class _ShoppingListModalState extends State<ShoppingListModal> {
             child: Text(
               item.name,
               style: TextStyle(
-                  fontSize: 16,
-                  decoration: item.isChecked
-                      ? TextDecoration.lineThrough
-                      : TextDecoration.none),
+                fontSize: 16,
+              ),
             ),
           ),
         ),
@@ -201,7 +196,7 @@ class _ShoppingListModalState extends State<ShoppingListModal> {
             focusNode: _focusNode,
             autofocus: true,
             decoration: const InputDecoration(
-              hintText: '항목 입력 후 Enter',
+              hintText: '',
               isDense: true,
               border: InputBorder.none,
             ),

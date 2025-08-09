@@ -1,3 +1,4 @@
+// 🔽 기존 import 유지
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_fridge_system/providers/ndata/foodn_item.dart';
@@ -123,7 +124,7 @@ class _RecordEntryScreenState extends State<RecordEntryScreen> {
                     border: Border.all(color: _borderColor.withOpacity(0.3)),
                   ),
                   child: ListTile(
-                    leading: Image.network(food.imagePath, width: 40, height: 40),
+                    leading: const Icon(Icons.fastfood, size: 40, color: Colors.grey), // ✅ 이미지 제거
                     title: Text(food.name, style: TextStyle(color: _textColor)),
                     subtitle: Text('${(food.amount * food.count).toStringAsFixed(1)}g ${(food.calories * food.count).toStringAsFixed(1)}kcal'),
                     trailing: Row(
@@ -238,10 +239,9 @@ class _RecordEntryScreenState extends State<RecordEntryScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-              child: Image.network(food.imagePath, height: 180, fit: BoxFit.cover),
-            ),
+            const SizedBox(height: 24), // ✅ 이미지 제거했으므로 대신 공간 확보
+
+            const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
