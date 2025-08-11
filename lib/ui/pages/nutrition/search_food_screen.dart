@@ -9,6 +9,9 @@ import 'package:smart_fridge_system/ui/pages/nutrition/record_entry_screen.dart'
 import 'package:smart_fridge_system/ui/pages/nutrition/food_detail_dialog.dart';
 import 'package:smart_fridge_system/ui/pages/nutrition/addfood_screen.dart'; // ✅ 내 음식 추가 화면
 
+// ✅ 레시피 메인 페이지 import (경로 프로젝트에 맞게 조정)
+import 'package:smart_fridge_system/ui/pages/recipe/recipe_main_page.dart';
+
 class SearchFoodScreen extends StatefulWidget {
   final String mealType;
   final DateTime date;
@@ -52,6 +55,9 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
     ];
   }
 
+  // ------------------------
+  // 문자열 정규화 & 관련도 점수
+  // ------------------------
   String _norm(String s) {
     s = s.toLowerCase().replaceAll(RegExp(r'[_/()\-\[\]]'), ' ');
     s = s.replaceAll(RegExp(r'\s+'), ' ');
@@ -71,6 +77,46 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
     if (n.contains(q)) score += 600;
     score += (200 - (n.length - q.length).abs()).clamp(0, 200);
     return score;
+  }
+
+  // ----------------------------------------
+  // ✅ 일반식품처럼 보이는 이름에 가점 주는 함수
+  // ----------------------------------------
+  double _genericPreferenceScore(String name) {
+    final n = _norm(name);
+
+    // 제품/브랜드 느낌 나는 패턴들
+    final hasDigits = RegExp(r'\d').hasMatch(n); // 100g, 500ml, 2.0 등
+    final hasUnit = RegExp(r'(g|ml|kg|l|kcal|mg)\b').hasMatch(n);
+    final hasBracket = n.contains('(') || n.contains(')') || n.contains('[') || n.contains(']');
+    final hasBrandKo = n.contains('㈜') || n.contains('(주)') || n.contains('주식회사');
+    final hasBrandEn = RegExp(r'\b(co|corp|ltd|inc)\b').hasMatch(n);
+    final hasFlavor = RegExp(r'(맛|향|오리지널|라이트|스페셜|프리미엄)').hasMatch(n);
+    final hasProductCue =
+    RegExp(r'(스낵|라면|음료|드링크|시리얼|바|비스킷|쿠키|캔|펫병|팩|세트)').hasMatch(n);
+
+    final words = n.split(' ').where((w) => w.isNotEmpty).toList();
+    final wordCount = words.length;
+
+    double score = 0;
+
+    // 일반식품스러운 특징: 단어 수 적고, 이름이 짧음
+    if (wordCount <= 2) score += 2.0;
+    if (n.length <= 6) score += 1.5;
+    if (wordCount == 1) score += 1.0;
+
+    // 제품스러운 특징은 감점
+    if (hasDigits) score -= 2.0;
+    if (hasUnit) score -= 1.5;
+    if (hasBracket) score -= 1.0;
+    if (hasBrandKo || hasBrandEn) score -= 2.0;
+    if (hasFlavor) score -= 1.0;
+    if (hasProductCue) score -= 1.0;
+
+    // 강한 감점: 브랜드 표식 + 숫자 조합
+    if ((hasBrandKo || hasBrandEn) && hasDigits) score -= 1.5;
+
+    return score; // 높을수록 일반식품일 가능성↑
   }
 
   /// 식품안전나라 영양DB 호출 (FOOD_NM_KR 기준, getFoodNtrCpntDbInq02)
@@ -129,15 +175,25 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
       } catch (_) {}
     }
 
-    // 정렬: 관련도 → 이름 짧은 순 → 가나다 → 칼로리 낮은 순
+    // ✅ 정렬: 일반식품 우선 + 관련도
     parsed.sort((a, b) {
-      final qa = _relevanceScore(a.name, keyword);
-      final qb = _relevanceScore(b.name, keyword);
-      if (qa != qb) return qb.compareTo(qa);
+      final relA = _relevanceScore(a.name, keyword);
+      final relB = _relevanceScore(b.name, keyword);
+
+      final genA = _genericPreferenceScore(a.name);
+      final genB = _genericPreferenceScore(b.name);
+
+      final scoreA = relA + genA * 100;
+      final scoreB = relB + genB * 100;
+
+      if (scoreA != scoreB) return scoreB.compareTo(scoreA);
+
       final lenCmp = a.name.length.compareTo(b.name.length);
       if (lenCmp != 0) return lenCmp;
+
       final nameCmp = a.name.compareTo(b.name);
       if (nameCmp != 0) return nameCmp;
+
       return a.calories.compareTo(b.calories);
     });
 
@@ -303,10 +359,11 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: ElevatedButton(
+                      // ✅ 여기만 변경: 레시피 메인 페이지로 이동
                       onPressed: () {
-                        // TODO: 레시피에서 추가하기 동작 연결
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('레시피에서 추가하기: 구현 예정')),
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const RecipeMainPage()),
                         );
                       },
                       style: ElevatedButton.styleFrom(
