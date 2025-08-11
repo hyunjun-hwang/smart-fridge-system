@@ -1,31 +1,16 @@
-// FILE: lib/ui/pages/home/temperature_control_modal.dart
-
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
+import 'package:provider/provider.dart';
 import 'package:smart_fridge_system/constants/app_constants.dart';
+import 'package:smart_fridge_system/providers/temperature_provider.dart';
+import 'dart:math' as math;
 
+/// 온도 제어 모달
 class TemperatureControlModal extends StatefulWidget {
-  final String title;
-  final double initialTemp;
-  final double minTemp;
-  final double maxTemp;
-  final double initialHumidity;
-  final String gasStatus;
-  final int? iceMakerMinutes;
-  final ValueChanged<double> onTempChanged;
-  final ValueChanged<double> onHumidityChanged;
+  final bool isFreezer;
 
   const TemperatureControlModal({
     super.key,
-    required this.title,
-    required this.initialTemp,
-    this.minTemp = -25,
-    this.maxTemp = -15,
-    required this.initialHumidity,
-    required this.gasStatus,
-    this.iceMakerMinutes,
-    required this.onTempChanged,
-    required this.onHumidityChanged,
+    required this.isFreezer,
   });
 
   @override
@@ -40,13 +25,33 @@ class _TemperatureControlModalState extends State<TemperatureControlModal> {
   @override
   void initState() {
     super.initState();
-    _currentTemp = widget.initialTemp;
-    _currentHumidity = widget.initialHumidity;
+    final provider = context.read<TemperatureProvider>();
+    if (widget.isFreezer) {
+      _currentTemp = provider.freezerTemp;
+      _currentHumidity = provider.freezerHumidity;
+    } else {
+      _currentTemp = provider.fridgeTemp;
+      _currentHumidity = provider.fridgeHumidity;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    bool isWarning = widget.gasStatus != '정상';
+    final provider = context.read<TemperatureProvider>();
+
+    final title = widget.isFreezer ? '냉동고' : '냉장고';
+    final minTemp = widget.isFreezer ? -25.0 : 0.0;
+    final maxTemp = widget.isFreezer ? -15.0 : 6.0;
+    final gasStatus =
+    widget.isFreezer ? provider.freezerGasStatus : provider.fridgeGasStatus;
+    final isWarning = gasStatus != '정상';
+    final iceMakerMinutes = widget.isFreezer ? 15 : null;
+
+    final Function(double) onTempChanged =
+    widget.isFreezer ? provider.updateFreezerTemp : provider.updateFridgeTemp;
+    final Function(double) onHumidityChanged = widget.isFreezer
+        ? provider.updateFreezerHumidity
+        : provider.updateFridgeHumidity;
 
     return Container(
       decoration: const BoxDecoration(
@@ -58,23 +63,19 @@ class _TemperatureControlModalState extends State<TemperatureControlModal> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // 제목
             Container(
-              width: double.infinity, // 가로를 꽉 채우도록 수정
+              width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
               decoration: BoxDecoration(
-                color: Colors.blue[100],
-                borderRadius: BorderRadius.circular(12),
-              ),
+                  color: Colors.blue[100],
+                  borderRadius: BorderRadius.circular(12)),
               alignment: Alignment.center,
-              child: Text(
-                widget.title,
-                style: kCardTitleTextStyle.copyWith(color: const Color(0xFF003508)),
-              ),
+              child: Text(title,
+                  style: kCardTitleTextStyle.copyWith(
+                      color: const Color(0xFF003508))),
             ),
             const SizedBox(height: 30),
-
-            // 컨트롤러 영역
+            // 온도, 습도, 가스 등 상태 표시
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               crossAxisAlignment: CrossAxisAlignment.end,
@@ -84,11 +85,11 @@ class _TemperatureControlModalState extends State<TemperatureControlModal> {
                     label: '온도',
                     value: _currentTemp,
                     displayValue: '${_currentTemp.round()}°C',
-                    min: widget.minTemp,
-                    max: widget.maxTemp,
+                    min: minTemp,
+                    max: maxTemp,
                     onChanged: (val) {
                       setState(() => _currentTemp = val);
-                      widget.onTempChanged(val);
+                      onTempChanged(val);
                     },
                   ),
                 ),
@@ -101,43 +102,34 @@ class _TemperatureControlModalState extends State<TemperatureControlModal> {
                     max: 100,
                     onChanged: (val) {
                       setState(() => _currentHumidity = val);
-                      widget.onHumidityChanged(val);
+                      onHumidityChanged(val);
                     },
                   ),
                 ),
                 Expanded(
                   child: _buildStatusIndicator(
-                    label: '가스',
-                    status: widget.gasStatus,
-                    isWarning: isWarning,
-                  ),
+                      label: '가스', status: gasStatus, isWarning: isWarning),
                 ),
-                if (widget.iceMakerMinutes != null)
+                if (iceMakerMinutes != null)
                   Expanded(
-                    child: _buildIceMakerStatus(widget.iceMakerMinutes!),
+                    child: _buildIceMakerStatus(iceMakerMinutes),
                   ),
               ],
             ),
             const SizedBox(height: 30),
-
-            // 닫기 버튼
             ElevatedButton(
               onPressed: () => Navigator.pop(context),
               style: ElevatedButton.styleFrom(
                 backgroundColor: kAccentColor,
                 minimumSize: const Size(double.infinity, 50),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                    borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text(
-                '닫기',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              child: const Text('닫기',
+                  style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -145,7 +137,6 @@ class _TemperatureControlModalState extends State<TemperatureControlModal> {
     );
   }
 
-  // 온도/습도 슬라이더 위젯
   Widget _buildSliderWithLabels({
     required String label,
     required double value,
@@ -161,15 +152,17 @@ class _TemperatureControlModalState extends State<TemperatureControlModal> {
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
         const SizedBox(height: 10),
         SizedBox(
-          height: 150, // 막대 높이를 조정하여 위치 맞춤
+          height: 150,
           child: RotatedBox(
             quarterTurns: 3,
             child: SliderTheme(
               data: SliderTheme.of(context).copyWith(
                 trackHeight: 8.0,
                 trackShape: const RoundedRectSliderTrackShape(),
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 12.0),
-                overlayShape: const RoundSliderOverlayShape(overlayRadius: 20.0),
+                thumbShape:
+                const RoundSliderThumbShape(enabledThumbRadius: 12.0),
+                overlayShape:
+                const RoundSliderOverlayShape(overlayRadius: 20.0),
                 activeTrackColor: kAccentColor,
                 inactiveTrackColor: Colors.grey[300],
                 thumbColor: Colors.white,
@@ -190,7 +183,6 @@ class _TemperatureControlModalState extends State<TemperatureControlModal> {
     );
   }
 
-  // 가스 상태 표시 위젯
   Widget _buildStatusIndicator(
       {required String label, required String status, bool isWarning = false}) {
     return Column(
@@ -203,8 +195,9 @@ class _TemperatureControlModalState extends State<TemperatureControlModal> {
                 color: isWarning ? kWarningColor : kNormalColor)),
         const SizedBox(height: 34),
         SizedBox(
-          height: 110, // 막대 높이 조정
+          height: 110,
           child: Stack(
+            alignment: Alignment.bottomCenter,
             children: [
               Container(
                 width: 8,
@@ -214,15 +207,12 @@ class _TemperatureControlModalState extends State<TemperatureControlModal> {
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
-              Positioned(
-                bottom: 0,
-                child: Container(
-                  width: 8,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: isWarning ? kWarningColor : kNormalColor,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
+              Container(
+                width: 8,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: isWarning ? kWarningColor : kNormalColor,
+                  borderRadius: BorderRadius.circular(4),
                 ),
               ),
             ],
@@ -234,7 +224,6 @@ class _TemperatureControlModalState extends State<TemperatureControlModal> {
     );
   }
 
-  // 얼음 상태 표시 위젯
   Widget _buildIceMakerStatus(int minutes) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
@@ -244,7 +233,7 @@ class _TemperatureControlModalState extends State<TemperatureControlModal> {
         const SizedBox(height: 30),
         Container(
             width: 60,
-            height: 110, // 막대 높이 조정
+            height: 110,
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               border: Border.all(color: Colors.grey[400]!),

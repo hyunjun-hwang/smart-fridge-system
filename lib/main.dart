@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:smart_fridge_system/data/models/food_item.dart';
+import 'package:smart_fridge_system/providers/shopping_list_provider.dart';
+import 'package:smart_fridge_system/providers/temperature_provider.dart';
 import 'firebase_options.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_fridge_system/providers/daily_nutrition_provider.dart';
@@ -39,11 +41,15 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => DailyNutritionProvider()),
         ChangeNotifierProvider(create: (_) => FoodProvider()),
+        ChangeNotifierProvider(create: (_) => TemperatureProvider()),
+        ChangeNotifierProvider(create: (_) => ShoppingListProvider()),
       ],
       child: MaterialApp(
         title: 'Smart Fridge System',
+        debugShowCheckedModeBanner: false,
         theme: ThemeData(
           primarySwatch: Colors.blue,
+          fontFamily: 'Pretendard',
         ),
         home: StreamBuilder<User?>(
           stream: FirebaseAuth.instance.authStateChanges(),
@@ -53,7 +59,6 @@ class MyApp extends StatelessWidget {
             }
 
             if (snapshot.hasData) {
-              // `const` 키워드를 삭제하여 동적으로 `key`를 전달하도록 수정했습니다.
               return BottomNav(key: bottomNavKey);
             } else {
               return const WelcomePage();
