@@ -7,7 +7,8 @@ import 'package:smart_fridge_system/ui/pages/refrigerator/food_list_item_card.da
 import 'package:smart_fridge_system/ui/pages/refrigerator/food_item_dialog.dart';
 
 class FridgePage extends StatefulWidget {
-  const FridgePage({super.key});
+  const FridgePage({super.key, this.pickMode = false}); // <- 추가
+  final bool pickMode;
 
   @override
   State<FridgePage> createState() => _FridgePageState();
