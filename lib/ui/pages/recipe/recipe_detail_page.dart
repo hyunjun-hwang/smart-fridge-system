@@ -130,7 +130,7 @@ class _RecipeHeader extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 6),
-              // ✅ 조리시간 제거, 칼로리만 표시
+              // 칼로리만 표시
               Row(
                 children: [
                   const Icon(Icons.local_fire_department, size: 18, color: Color(0xFF003508)),
@@ -331,6 +331,13 @@ class _RecipeSteps extends StatelessWidget {
   final Recipe recipe;
   const _RecipeSteps({required this.recipe});
 
+  // 텍스트 앞의 번호/기호 제거 (예: "1. ", "2) ", "③ " 등)
+  String _stripLeadingNumber(String s) {
+    final t = s.trimLeft();
+    final regex = RegExp(r'^(?:\d+|[①-⑳])\s*[\.\)\-:>]*\s*');
+    return t.replaceFirst(regex, '');
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasSteps = recipe.steps.isNotEmpty;
@@ -370,7 +377,7 @@ class _RecipeSteps extends StatelessWidget {
           Column(
             children: recipe.steps.asMap().entries.map((entry) {
               final idx = entry.key + 1;
-              final step = entry.value;
+              final step = _stripLeadingNumber(entry.value);
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Row(
