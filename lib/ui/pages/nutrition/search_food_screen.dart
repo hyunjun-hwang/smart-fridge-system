@@ -1,20 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:provider/provider.dart';
 
-import 'package:smart_fridge_system/providers/daily_nutrition_provider.dart';
-import 'package:smart_fridge_system/providers/ndata/foodn_item.dart';
-import 'package:smart_fridge_system/ui/pages/nutrition/record_entry_screen.dart';
-import 'package:smart_fridge_system/ui/pages/nutrition/food_detail_dialog.dart';
-import 'package:smart_fridge_system/ui/pages/nutrition/addfood_screen.dart'; // ✅ 내 음식 추가 화면
-
-// ✅ 레시피 메인 페이지 import (경로 프로젝트에 맞게 조정)
-import 'package:smart_fridge_system/ui/pages/recipe/recipe_main_page.dart';
+import 'package:smart_fridge_system/data/models/recipe_model.dart';
+import 'package:smart_fridge_system/ui/pages/recipe/recipe_detail_page.dart';
 
 class SearchFoodScreen extends StatefulWidget {
-  final String mealType;
-  final DateTime date;
+  final String mealType;      // ✅ RecordEntryScreen에서 넘겨줌
+  final DateTime date;        // ✅ RecordEntryScreen에서 넘겨줌
 
   const SearchFoodScreen({
     super.key,
@@ -27,426 +20,224 @@ class SearchFoodScreen extends StatefulWidget {
 }
 
 class _SearchFoodScreenState extends State<SearchFoodScreen> {
-  int selectedIndex = 0;
-  final List<String> filters = ['검색', '즐겨찾기', '내 음식', '냉장고'];
   final TextEditingController _searchController = TextEditingController();
-
-  List<FoodItemn> recentSearches = [];
-  List<FoodItemn> myFoods = [];
-  List<FoodItemn> favoriteItems = [];
-  List<FoodItemn> fridgeItems = [];
-
   bool _isLoading = false;
+  List<Recipe> recipes = [];
 
-  @override
-  void initState() {
-    super.initState();
-    recentSearches = [];
-    fridgeItems = [
-      FoodItemn(
-        name: '우유',
-        calories: 42,
-        carbohydrates: 5.0,
-        protein: 3.4,
-        fat: 1.0,
-        amount: 100,
-        count: 1.0,
-      ),
-    ];
-  }
+  // ✅ 식품안전나라 레시피 API 기본 설정
+  static const String _keyId = 'ff4910709e05408eba7c'; // API 인증키
+  static const String _base = 'https://openapi.foodsafetykorea.go.kr/api';
+  static const String _serviceId = 'COOKRCP01';
+  static const String _dataType = 'json';
 
-  // ------------------------
-  // 문자열 정규화 & 관련도 점수
-  // ------------------------
-  String _norm(String s) {
-    s = s.toLowerCase().replaceAll(RegExp(r'[_/()\-\[\]]'), ' ');
-    s = s.replaceAll(RegExp(r'\s+'), ' ');
-    return s.trim();
-  }
+  Future<void> _fetchRecipes(String keyword) async {
+    final kw = keyword.trim();
+    if (kw.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('검색어를 입력하세요.')),
+      );
+      return;
+    }
 
-  double _relevanceScore(String name, String query) {
-    final n = _norm(name);
-    final q = _norm(query);
-    if (q.isEmpty || n.isEmpty) return 0;
+    setState(() => _isLoading = true);
 
-    final words = n.split(' ');
-    double score = 0;
-    if (n == q) score += 1000;
-    if (words.contains(q)) score += 800;
-    if (n.startsWith(q)) score += 700;
-    if (n.contains(q)) score += 600;
-    score += (200 - (n.length - q.length).abs()).clamp(0, 200);
-    return score;
-  }
-
-  // ----------------------------------------
-  // ✅ 일반식품처럼 보이는 이름에 가점 주는 함수
-  // ----------------------------------------
-  double _genericPreferenceScore(String name) {
-    final n = _norm(name);
-
-    // 제품/브랜드 느낌 나는 패턴들
-    final hasDigits = RegExp(r'\d').hasMatch(n); // 100g, 500ml, 2.0 등
-    final hasUnit = RegExp(r'(g|ml|kg|l|kcal|mg)\b').hasMatch(n);
-    final hasBracket = n.contains('(') || n.contains(')') || n.contains('[') || n.contains(']');
-    final hasBrandKo = n.contains('㈜') || n.contains('(주)') || n.contains('주식회사');
-    final hasBrandEn = RegExp(r'\b(co|corp|ltd|inc)\b').hasMatch(n);
-    final hasFlavor = RegExp(r'(맛|향|오리지널|라이트|스페셜|프리미엄)').hasMatch(n);
-    final hasProductCue =
-    RegExp(r'(스낵|라면|음료|드링크|시리얼|바|비스킷|쿠키|캔|펫병|팩|세트)').hasMatch(n);
-
-    final words = n.split(' ').where((w) => w.isNotEmpty).toList();
-    final wordCount = words.length;
-
-    double score = 0;
-
-    // 일반식품스러운 특징: 단어 수 적고, 이름이 짧음
-    if (wordCount <= 2) score += 2.0;
-    if (n.length <= 6) score += 1.5;
-    if (wordCount == 1) score += 1.0;
-
-    // 제품스러운 특징은 감점
-    if (hasDigits) score -= 2.0;
-    if (hasUnit) score -= 1.5;
-    if (hasBracket) score -= 1.0;
-    if (hasBrandKo || hasBrandEn) score -= 2.0;
-    if (hasFlavor) score -= 1.0;
-    if (hasProductCue) score -= 1.0;
-
-    // 강한 감점: 브랜드 표식 + 숫자 조합
-    if ((hasBrandKo || hasBrandEn) && hasDigits) score -= 1.5;
-
-    return score; // 높을수록 일반식품일 가능성↑
-  }
-
-  /// 식품안전나라 영양DB 호출 (FOOD_NM_KR 기준, getFoodNtrCpntDbInq02)
-  Future<void> fetchFoodInfo(String keyword) async {
-    if (mounted) setState(() => _isLoading = true);
-
-    const String serviceKeyEncoding =
-        'aC9p2FWLKdtxRQI%2FqYrTTCIl9LwAHXOl1ZJ3hcon7nFhVsWWxCck2f03W%2BMCrNj1b8F3wJSUzouE7pYGqHKRfQ%3D%3D';
-
-    final String q = Uri.encodeQueryComponent(keyword);
-    final Uri requestUrl = Uri.parse(
-      'https://apis.data.go.kr/1471000/FoodNtrCpntDbInfo02/getFoodNtrCpntDbInq02'
-          '?serviceKey=$serviceKeyEncoding&pageNo=1&numOfRows=20&type=json&FOOD_NM_KR=$q',
+    final String q = Uri.encodeComponent(kw);
+    const startIdx = 1;
+    const endIdx = 20;
+    final Uri url = Uri.parse(
+      '$_base/$_keyId/$_serviceId/$_dataType/$startIdx/$endIdx/RCP_NM=$q',
     );
-
-    Map<String, dynamic>? data;
-    http.Response? lastRes;
 
     try {
-      final res = await http.get(requestUrl, headers: {'Accept': 'application/json'});
-      lastRes = res;
+      final res = await http.get(url);
       if (res.statusCode == 200) {
-        data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
-        if (data?['header']?['resultCode'] != '00') data = null;
-      }
-    } catch (_) {}
+        final Map<String, dynamic> jsonBody =
+        json.decode(utf8.decode(res.bodyBytes));
+        final List<dynamic>? rows = jsonBody['COOKRCP01']?['row'];
 
-    if (mounted) setState(() => _isLoading = false);
-
-    if (data == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('API 호출 실패 (코드: ${lastRes?.statusCode ?? 'N/A'})')),
-      );
-      return;
-    }
-
-    final itemsData = data['body']?['items'];
-    if (itemsData == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('검색 결과가 없습니다.')),
-      );
-      return;
-    }
-
-    final rows = itemsData is List ? itemsData : [itemsData];
-
-    final parsed = <FoodItemn>[];
-    for (final e in rows) {
-      try {
-        final itemData = e is Map && e.containsKey('item') ? e['item'] : e;
-        if (itemData is Map) {
-          parsed.add(FoodItemn.fromApiJson(Map<String, dynamic>.from(itemData)));
+        if (rows == null || rows.isEmpty) {
+          setState(() => recipes = []);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('검색 결과가 없습니다.')),
+          );
+        } else {
+          setState(() {
+            recipes = rows.map((r) {
+              return Recipe(
+                title: (r['RCP_NM'] ?? '').toString(),
+                description: (r['RCP_PAT2'] ?? '').toString(),
+                imagePath: (r['ATT_FILE_NO_MAIN'] ?? '').toString(),
+                time: 0,
+                kcal: double.tryParse((r['INFO_ENG'] ?? '0').toString())
+                    ?.round() ??
+                    0,
+                carb: double.tryParse((r['INFO_CAR'] ?? '0').toString()) ?? 0,
+                protein:
+                double.tryParse((r['INFO_PRO'] ?? '0').toString()) ?? 0,
+                fat: double.tryParse((r['INFO_FAT'] ?? '0').toString()) ?? 0,
+                ingredients: {},
+                steps: [],
+              );
+            }).toList();
+          });
         }
-      } catch (_) {}
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('호출 실패: ${res.statusCode}')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('오류 발생: $e')),
+      );
+    } finally {
+      setState(() => _isLoading = false);
     }
-
-    // ✅ 정렬: 일반식품 우선 + 관련도
-    parsed.sort((a, b) {
-      final relA = _relevanceScore(a.name, keyword);
-      final relB = _relevanceScore(b.name, keyword);
-
-      final genA = _genericPreferenceScore(a.name);
-      final genB = _genericPreferenceScore(b.name);
-
-      final scoreA = relA + genA * 100;
-      final scoreB = relB + genB * 100;
-
-      if (scoreA != scoreB) return scoreB.compareTo(scoreA);
-
-      final lenCmp = a.name.length.compareTo(b.name.length);
-      if (lenCmp != 0) return lenCmp;
-
-      final nameCmp = a.name.compareTo(b.name);
-      if (nameCmp != 0) return nameCmp;
-
-      return a.calories.compareTo(b.calories);
-    });
-
-    if (!mounted) return;
-    setState(() {
-      recentSearches = parsed;
-      selectedIndex = 0;
-    });
   }
 
-  void _addFoodAndReturn(FoodItemn food) {
-    final provider = Provider.of<DailyNutritionProvider>(context, listen: false);
-    provider.addFood(widget.mealType, widget.date, food);
-
-    if (!mounted) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => RecordEntryScreen(
-          mealType: widget.mealType,
-          date: widget.date,
-        ),
-      ),
-    );
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F2F7),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Color(0xFF003508)),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.pop(context), // result 없음 → null 반환됨(OK)
         ),
         title: const Text(
-          '음식 검색',
-          style: TextStyle(color: Color(0xFF003508), fontWeight: FontWeight.bold),
+          '레시피',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 20,
+            color: Color(0xFF003508),
+          ),
         ),
         centerTitle: true,
       ),
       body: Column(
         children: [
-          // 탭
+          const SizedBox(height: 8),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: SizedBox(
-              height: 40,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: List.generate(filters.length, (index) {
-                  final isSelected = selectedIndex == index;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
-                    child: ChoiceChip(
-                      label: Text(filters[index]),
-                      selected: isSelected,
-                      onSelected: (_) => setState(() => selectedIndex = index),
-                      selectedColor: const Color(0xFFD5E8C6),
-                      backgroundColor: Colors.white,
-                      labelStyle: TextStyle(
-                        color: isSelected ? Colors.black : Colors.grey[600],
-                      ),
-                      side: BorderSide(
-                        color: isSelected ? Colors.transparent : Colors.grey.shade300,
-                      ),
-                    ),
-                  );
-                }),
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: TextField(
+              controller: _searchController,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                contentPadding:
+                const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                hintText: '레시피명을 검색하세요. (예: 김치볶음밥, 된장찌개)',
+                prefixIcon: const Icon(Icons.search, color: Color(0xFF003508)),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(28),
+                  borderSide:
+                  const BorderSide(color: Color(0xFF7BAA7F), width: 2),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(28),
+                  borderSide:
+                  const BorderSide(color: Color(0xFF003508), width: 2),
+                ),
               ),
+              onSubmitted: _fetchRecipes,
             ),
           ),
-
-          // ✅ 검색 탭에서만 검색창/버튼 보이기
-          if (selectedIndex == 0) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: const InputDecoration(
-                    hintText: '음식 이름을 검색하세요.',
-                    prefixIcon: Icon(Icons.search, color: Colors.grey),
-                    border: InputBorder.none,
-                  ),
-                  onSubmitted: (keyword) {
-                    if (keyword.trim().isNotEmpty) {
-                      fetchFoodInfo(keyword.trim());
-                    }
-                  },
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isLoading
-                      ? null
-                      : () {
-                    final keyword = _searchController.text.trim();
-                    if (keyword.isNotEmpty) {
-                      FocusScope.of(context).unfocus();
-                      fetchFoodInfo(keyword);
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF003508),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
-                  )
-                      : const Text('검색'),
-                ),
-              ),
-            ),
-          ],
-
-          // ✅ 내 음식 탭에서만 “내 음식 추가/레시피에서 추가” 버튼 노출
-          if (selectedIndex == 2)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        final newFood = await Navigator.push<FoodItemn>(
-                          context,
-                          MaterialPageRoute(builder: (_) => const AddFoodScreen()),
-                        );
-                        if (newFood != null) {
-                          setState(() {
-                            myFoods.add(newFood);
-                          });
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFD5E8C6),
-                        foregroundColor: const Color(0xFF003508),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: const Text('내 음식 추가하기'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ElevatedButton(
-                      // ✅ 여기만 변경: 레시피 메인 페이지로 이동
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const RecipeMainPage()),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFD5E8C6),
-                        foregroundColor: const Color(0xFF003508),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: const Text('레시피에서 추가하기'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          const SizedBox(height: 8),
-
+          const SizedBox(height: 12),
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: Color(0xFF003508)))
-                : Builder(
-              builder: (_) {
-                if (selectedIndex == 0) return _buildFoodList(recentSearches);
-                if (selectedIndex == 1) return _buildFoodList(favoriteItems);
-                if (selectedIndex == 2) return _buildFoodList(myFoods);
-                if (selectedIndex == 3) return _buildFoodList(fridgeItems);
-                return const Center(child: Text('항목이 없습니다.'));
+                ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF003508)),
+            )
+                : recipes.isEmpty
+                ? const Center(child: Text('검색 결과가 없습니다.'))
+                : ListView.builder(
+              itemCount: recipes.length,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemBuilder: (context, index) {
+                final recipe = recipes[index];
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            RecipeDetailPage(recipe: recipe),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(vertical: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                          color: const Color(0xFFD5E8C6), width: 2),
+                    ),
+                    child: Row(
+                      children: [
+                        recipe.imagePath.startsWith('http')
+                            ? ClipRRect(
+                          borderRadius:
+                          BorderRadius.circular(8),
+                          child: Image.network(
+                            recipe.imagePath,
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                            const Icon(Icons.image,
+                                size: 40),
+                          ),
+                        )
+                            : const Icon(Icons.image, size: 40),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment:
+                            CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                recipe.title,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                recipe.description,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    color: Colors.grey, fontSize: 14),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${recipe.kcal} kcal',
+                                style: const TextStyle(
+                                    color: Color(0xFF003508),
+                                    fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
               },
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildFoodList(List<FoodItemn> items) {
-    if (items.isEmpty) {
-      return const Center(child: Text('표시할 항목이 없습니다.'));
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: items.length,
-      itemBuilder: (context, index) {
-        final item = items[index];
-        final isFavorite = favoriteItems.any((f) => f.name == item.name);
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFD5E8C6), width: 2),
-            boxShadow: const [
-              BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
-            ],
-          ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.all(12),
-            title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('1회 제공량(${item.amount}g)당 열량: ${item.calories.toStringAsFixed(1)} kcal'),
-            trailing: IconButton(
-              icon: Icon(isFavorite ? Icons.star : Icons.star_border,
-                  color: isFavorite ? Colors.amber : Colors.grey),
-              onPressed: () {
-                setState(() {
-                  if (isFavorite) {
-                    favoriteItems.removeWhere((f) => f.name == item.name);
-                  } else {
-                    favoriteItems.add(item);
-                  }
-                });
-              },
-            ),
-            onTap: () {
-              showFoodDetailDialog(
-                context: context,
-                item: item,
-                onAdd: _addFoodAndReturn,
-              );
-            },
-          ),
-        );
-      },
     );
   }
 }

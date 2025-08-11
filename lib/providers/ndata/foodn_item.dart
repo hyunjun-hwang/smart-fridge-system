@@ -7,6 +7,7 @@ class FoodItemn {
   final double fat;           // g
   final double amount;        // 1회 제공량(g) - 기본 100g
   final double count;         // 먹은 개수 (0.5 단위 가능)
+  final String imagePath;     // ✅ 이미지 경로(또는 URL). 없으면 ''.
 
   FoodItemn({
     required this.name,
@@ -16,6 +17,7 @@ class FoodItemn {
     required this.fat,
     required this.amount,
     required this.count,
+    this.imagePath = '', // ✅ 기본값
   });
 
   // 문자열/숫자 혼용 대응
@@ -45,6 +47,9 @@ class FoodItemn {
       if (m != null) amount = double.tryParse(m.group(1)!) ?? 100;
     }
 
+    // 공공데이터에서 이미지 키가 다를 수 있으므로 안전하게 빈값으로
+    final String imagePath = (json['IMAGE_URL'] ?? json['IMG_URL'] ?? '').toString();
+
     return FoodItemn(
       name: name.isEmpty ? '이름 없음' : name,
       calories: calories,
@@ -53,6 +58,7 @@ class FoodItemn {
       fat: fat,
       amount: amount,
       count: 1.0,
+      imagePath: imagePath,
     );
   }
 
@@ -66,6 +72,7 @@ class FoodItemn {
       fat: (json['fat'] as num).toDouble(),
       amount: (json['amount'] as num).toDouble(),
       count: (json['count'] as num).toDouble(),
+      imagePath: (json['imagePath'] ?? '').toString(), // ✅ 누락돼도 안전
     );
   }
 
@@ -79,6 +86,7 @@ class FoodItemn {
       'fat': fat,
       'amount': amount,
       'count': count,
+      'imagePath': imagePath, // ✅ 포함
     };
   }
 
@@ -91,6 +99,7 @@ class FoodItemn {
     double? fat,
     double? amount,
     double? count,
+    String? imagePath,
   }) {
     return FoodItemn(
       name: name ?? this.name,
@@ -100,9 +109,10 @@ class FoodItemn {
       fat: fat ?? this.fat,
       amount: amount ?? this.amount,
       count: count ?? this.count,
+      imagePath: imagePath ?? this.imagePath,
     );
   }
 
   @override
-  String toString() => 'FoodItemn(name: $name, count: $count, cal: $calories)';
+  String toString() => 'FoodItemn(name: $name, count: $count, cal: $calories, img: $imagePath)';
 }
