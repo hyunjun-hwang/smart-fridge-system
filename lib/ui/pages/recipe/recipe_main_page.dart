@@ -286,7 +286,6 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
                       title: recipe.title,
                       subtitle: recipe.description,
                       ingredients: recipe.ingredients.keys.join(', '),
-                      timeMinutes: recipe.time,
                       kcal: recipe.kcal.toDouble(),
                     ),
                   );
@@ -305,8 +304,7 @@ class RecipeCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final String ingredients;
-  final int timeMinutes;
-  final double kcal;
+  final double kcal; // ⛔️ timeMinutes 삭제
 
   const RecipeCard({
     super.key,
@@ -314,7 +312,6 @@ class RecipeCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.ingredients,
-    required this.timeMinutes,
     required this.kcal,
   });
 
@@ -405,15 +402,11 @@ class RecipeCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
+                // ✅ 아이콘과 텍스트를 같은 줄에 정렬 (깨짐/클리핑 방지)
                 Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const Icon(Icons.access_time, size: 16, color: Color(0xFF003508)),
-                    const SizedBox(width: 4),
-                    Text(
-                      timeMinutes > 0 ? '${timeMinutes}분' : '-',
-                      style: const TextStyle(fontSize: 13, color: Color(0xFF003508)),
-                    ),
-                    const SizedBox(width: 16),
                     const Icon(Icons.local_fire_department, size: 16, color: Color(0xFF003508)),
                     const SizedBox(width: 4),
                     Text(

@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:smart_fridge_system/data/models/recipe_model.dart';
-import 'package:smart_fridge_system/data/models/meal_service.dart';
 
 class RecipeDetailPage extends StatefulWidget {
   final Recipe recipe;
@@ -12,140 +10,6 @@ class RecipeDetailPage extends StatefulWidget {
 }
 
 class _RecipeDetailPageState extends State<RecipeDetailPage> {
-  final MealService _mealService = MealService();
-  String _selectedMeal = '아침';
-
-  // slot 매핑
-  String _slotOf(String label) {
-    switch (label) {
-      case '아침':
-        return 'breakfast';
-      case '점심':
-        return 'lunch';
-      case '저녁':
-        return 'dinner';
-      case '아침 간식':
-        return 'snack_morning';
-      case '점심 간식':
-        return 'snack_afternoon';
-      case '저녁 간식':
-        return 'snack_evening';
-      default:
-        return 'etc';
-    }
-  }
-
-  Future<void> _openAddSheet() async {
-    final selected = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        String temp = _selectedMeal;
-        final meals = [
-          {'label': '아침', 'kcal': '${widget.recipe.kcal}kcal'},
-          {'label': '점심', 'kcal': '0kcal'},
-          {'label': '저녁', 'kcal': '0kcal'},
-          {'label': '아침 간식', 'kcal': '0kcal'},
-          {'label': '점심 간식', 'kcal': '0kcal'},
-          {'label': '저녁 간식', 'kcal': '0kcal'},
-        ];
-
-        return StatefulBuilder(
-          builder: (context, setSheet) {
-            return Padding(
-              padding: EdgeInsets.fromLTRB(
-                20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    '식단 추가',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF003508),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Wrap(
-                    spacing: 20,
-                    runSpacing: 16,
-                    alignment: WrapAlignment.center,
-                    children: meals.map((meal) {
-                      final label = meal['label']!;
-                      final kcal = meal['kcal']!;
-                      final isSelected = temp == label;
-                      return GestureDetector(
-                        onTap: () => setSheet(() => temp = label),
-                        child: _MealChip(
-                          label: label,
-                          kcal: kcal,
-                          isSelected: isSelected,
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context, temp),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFD6E2C0),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      child: const Text(
-                        '추가하기',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF003508),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-
-    if (selected == null) return;
-
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('로그인이 필요합니다.')),
-      );
-      return;
-    }
-
-    final slot = _slotOf(selected);
-    await _mealService.addMeal(
-      uid: uid,
-      slot: slot,
-      recipeId: widget.recipe.title, // 고유 id 없으면 임시로 제목 사용
-      recipeName: widget.recipe.title,
-      kcal: widget.recipe.kcal.toDouble(),
-    );
-
-    if (!mounted) return;
-    setState(() => _selectedMeal = selected);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('[$selected]에 추가되었습니다!')),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -153,12 +17,8 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // ✅ 뒤로가기 동작 연결
             _TopBar(
-              onBack: () {
-                // 현재 라우트에서 뒤로 갈 수 있으면 pop, 아니면 그냥 무시(혹은 홈으로 이동하도록 커스터마이즈 가능)
-                Navigator.of(context).maybePop();
-              },
+              onBack: () => Navigator.of(context).maybePop(),
             ),
             Expanded(
               child: SingleChildScrollView(
@@ -178,31 +38,6 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
           ],
         ),
       ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-        child: SizedBox(
-          height: 50,
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: _openAddSheet,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF003508),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text(
-              '추가하기',
-              style: TextStyle(
-                fontFamily: 'Pretendard Variable',
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -220,7 +55,6 @@ class _TopBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // ✅ 탭 가능하게 변경
           IconButton(
             icon: const Icon(Icons.arrow_back, color: Color(0xFF003508)),
             onPressed: onBack ?? () => Navigator.of(context).maybePop(),
@@ -296,15 +130,9 @@ class _RecipeHeader extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 6),
+              // ✅ 조리시간 제거, 칼로리만 표시
               Row(
                 children: [
-                  const Icon(Icons.access_time, size: 18, color: Color(0xFF003508)),
-                  const SizedBox(width: 4),
-                  Text(
-                    recipe.time > 0 ? '${recipe.time}분' : '-',
-                    style: const TextStyle(color: Color(0xFF003508)),
-                  ),
-                  const SizedBox(width: 12),
                   const Icon(Icons.local_fire_department, size: 18, color: Color(0xFF003508)),
                   const SizedBox(width: 4),
                   Text(
@@ -328,12 +156,12 @@ class _RecipeHeader extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              // 탄단지 수치 (값을 직접 전달)
+              // 탄단지 수치
               Column(
                 children: const [
                   _NutrientItemRow(name: '탄수화물', color: Color(0xFFD0E7FF)),
-                  _NutrientItemRow(name: '단백질',   color: Color(0xFFD6ECC9)),
-                  _NutrientItemRow(name: '지방',     color: Color(0xFFBFD9D2)),
+                  _NutrientItemRow(name: '단백질', color: Color(0xFFD6ECC9)),
+                  _NutrientItemRow(name: '지방', color: Color(0xFFBFD9D2)),
                 ],
               ).withValues(c, p, f),
             ],
@@ -399,7 +227,6 @@ class _NutrientItemRow extends StatelessWidget {
 }
 
 // Column(children: [const _NutrientItemRow(...), ...]).withValues(c,p,f)
-// 처럼 쓰기 위한 간단한 확장
 extension _NutrientColumnValues on Widget {
   Widget withValues(double c, double p, double f) {
     if (this is! Column) return this;
@@ -583,56 +410,6 @@ class _RecipeSteps extends StatelessWidget {
             }).toList(),
           ),
       ],
-    );
-  }
-}
-
-/* --- BottomSheet Chip --- */
-
-class _MealChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final String kcal;
-  const _MealChip({
-    required this.label,
-    required this.isSelected,
-    required this.kcal,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 96,
-      height: 72,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF5F8F0),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: isSelected ? const Color(0xFF003508) : const Color(0xFFD6E2C0),
-          width: isSelected ? 2 : 1,
-        ),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF003508),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            kcal,
-            style: TextStyle(
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              fontSize: 14,
-              color: isSelected ? const Color(0xFF003508) : Colors.grey,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
