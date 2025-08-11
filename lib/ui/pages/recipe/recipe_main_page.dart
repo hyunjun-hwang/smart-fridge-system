@@ -3,10 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:smart_fridge_system/data/models/recipe_model.dart';
-import 'package:smart_fridge_system/ui/pages/recipe/recipe_detail_page.dart';
-
-// ✅ 영양 반영을 위해 FoodItemn으로 변환해서 SearchFoodScreen으로 돌려보냄
-import 'package:smart_fridge_system/providers/ndata/foodn_item.dart';
+import 'recipe_detail_page.dart';
 
 class RecipeMainPage extends StatefulWidget {
   const RecipeMainPage({super.key});
@@ -22,25 +19,11 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
   bool _isLoading = false;
   List<Recipe> recipes = [];
 
-  // ✅ 식품안전나라(레시피) 경로형 포맷 정보
+  // ✅ 경로형 포맷 정보
   static const String _keyId = 'ff4910709e05408eba7c';
   static const String _base = 'http://openapi.foodsafetykorea.go.kr/api';
   static const String _serviceId = 'COOKRCP01'; // 레시피(조리순서/칼로리/이미지)
   static const String _dataType = 'json';
-
-  // ✅ Recipe → FoodItemn 매핑 (필드명 프로젝트에 맞게 사용 중)
-  FoodItemn _toFoodItemn(Recipe r) {
-    // 레시피 1인분 기준으로 저장한다고 가정. 제공량이 없으니 amount=100g로 둠.
-    return FoodItemn(
-      name: r.title.isNotEmpty ? r.title : '이름 없는 레시피',
-      calories: (r.kcal).toDouble(),   // Recipe.kcal이 int → double
-      carbohydrates: r.carb,           // g
-      protein: r.protein,              // g
-      fat: r.fat,                      // g
-      amount: 100,                     // 제공량 정보 없으므로 100g 기준
-      count: 1.0,                      // 1인분
-    );
-  }
 
   Future<void> _fetchRecipes(String keyword) async {
     if (keyword.trim().isEmpty) return;
@@ -80,12 +63,12 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
         final title = (r['RCP_NM'] ?? '').toString().trim();
         final img = (r['ATT_FILE_NO_MAIN'] ?? '').toString().trim();
 
-        // ✅ kcal: INFO_ENG (문자일 수 있으니 파싱)
+        // ✅ kcal: INFO_ENG (문자열일 수 있으니 double로 파싱)
         final kcalStr = (r['INFO_ENG'] ?? '').toString().trim();
         final kcalDouble = double.tryParse(kcalStr) ?? 0;
-        final kcalVal = kcalDouble.round(); // Recipe.kcal이 int
+        final kcalVal = kcalDouble.round(); // Recipe.kcal이 int라면 반올림 저장
 
-        // ✅ 탄수화물/단백질/지방: INFO_CAR / INFO_PRO / INFO_FAT
+        // ✅ 탄단지: 실제 키 이름 사용 (INFO_CAR, INFO_PRO, INFO_FAT)
         final carbStr = (r['INFO_CAR'] ?? '').toString().trim();
         final proteinStr = (r['INFO_PRO'] ?? '').toString().trim();
         final fatStr = (r['INFO_FAT'] ?? '').toString().trim();
@@ -123,8 +106,8 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
             title: title.isEmpty ? '이름 없음' : title,
             description: (r['RCP_PAT2'] ?? '레시피').toString(),
             imagePath: img.isEmpty ? 'assets/images/placeholder_food.jpg' : img,
-            time: 0,              // 명확한 시간 없음
-            kcal: kcalVal,        // int
+            time: 0,              // 명확한 시간 필드 없음
+            kcal: kcalVal,        // int 저장
             carb: carbVal,        // double
             protein: proteinVal,  // double
             fat: fatVal,          // double
@@ -164,31 +147,33 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-
-      // ✅ 뒤로가기(AppBar) 활성화
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF003508)),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          '레시피',
-          style: TextStyle(
-            fontFamily: 'Pretendard Variable',
-            fontWeight: FontWeight.w700,
-            fontSize: 20,
-            color: Color(0xFF003508),
-          ),
-        ),
-        centerTitle: true,
-      ),
-
       body: SafeArea(
         child: Column(
           children: [
-            const SizedBox(height: 8),
+            const SizedBox(height: 32),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: [
+                  const Spacer(),
+                  const Text(
+                    '레시피',
+                    style: TextStyle(
+                      fontFamily: 'Pretendard Variable',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 24,
+                      color: Color(0xFF003508),
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.notifications_none, color: Color(0xFF003508)),
+                    onPressed: () {},
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
 
             // 검색창
             Padding(
@@ -296,10 +281,13 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
                 itemBuilder: (context, index) {
                   final recipe = recipes[index];
                   return GestureDetector(
-                    // ✅ 탭하면 즉시 FoodItemn으로 변환해서 이전 화면(SearchFoodScreen)으로 반환
                     onTap: () {
-                      final food = _toFoodItemn(recipe);
-                      Navigator.pop<FoodItemn>(context, food);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => RecipeDetailPage(recipe: recipe),
+                        ),
+                      );
                     },
                     child: RecipeCard(
                       imagePath: recipe.imagePath,
@@ -308,7 +296,6 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
                       ingredients: recipe.ingredients.keys.join(', '),
                       timeMinutes: recipe.time,
                       kcal: recipe.kcal.toDouble(), // 카드 표시에 double 사용
-                      // ⚠️ 상세 보기는 카드 내부의 아이콘 버튼 등으로 별도 진입 권장
                     ),
                   );
                 },
@@ -440,33 +427,6 @@ class RecipeCard extends StatelessWidget {
                     Text(
                       '${kcal.toStringAsFixed(0)}kcal',
                       style: const TextStyle(fontSize: 13, color: Color(0xFF003508)),
-                    ),
-                    const Spacer(),
-                    // 👇 상세보기(선택)로 들어가고 싶을 때 사용하는 아이콘 (반영은 탭으로 이미 처리)
-                    IconButton(
-                      tooltip: '상세 보기',
-                      icon: const Icon(Icons.info_outline, size: 18, color: Color(0xFF003508)),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => RecipeDetailPage(
-                              recipe: Recipe(
-                                title: title,
-                                description: subtitle,
-                                imagePath: imagePath,
-                                time: timeMinutes,
-                                kcal: kcal.round(),
-                                carb: 0,       // 상세 페이지에서 필요 시 채워도 됨
-                                protein: 0,
-                                fat: 0,
-                                ingredients: const {},
-                                steps: const [],
-                              ),
-                            ),
-                          ),
-                        );
-                      },
                     ),
                   ],
                 ),
