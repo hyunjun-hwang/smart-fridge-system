@@ -19,7 +19,7 @@ class MealDetailScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: const Color(0xFFD5E8C6),
         elevation: 0,
-        leading: BackButton(color: Colors.green),
+        leading: const BackButton(color: Colors.green),
         title: Text(
           provider.getFormattedDate(date),
           style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
@@ -95,51 +95,58 @@ class MealDetailScreen extends StatelessWidget {
                           setState(() {});
                         }
 
-                        return Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
+                        return Material(
+                          color: Colors.transparent,
+                          child: InkWell(
                             borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              // ✅ imagePath 제거 → 기본 아이콘으로 대체
-                              Container(
-                                width: 50,
-                                height: 50,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[200],
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Icon(Icons.fastfood, size: 30, color: Colors.grey),
+                            onTap: () => showFoodInfoDialog(context, food, count),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(food.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                    Text(
-                                      '1개(${food.amount}g) ${food.calories}kcal',
-                                      style: const TextStyle(fontSize: 13, color: Colors.grey),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Row(
+                              child: Row(
                                 children: [
-                                  _circleBtn(Icons.remove, () => update(-0.5)),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                                    child: Text(
-                                      '${count.toStringAsFixed(1)}',
-                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                  // ✅ imagePath 제거 → 기본 아이콘으로 대체
+                                  Container(
+                                    width: 50,
+                                    height: 50,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[200],
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(Icons.fastfood, size: 30, color: Colors.grey),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(food.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                        Text(
+                                          '1개(${food.amount}g) ${food.calories}kcal',
+                                          style: const TextStyle(fontSize: 13, color: Colors.grey),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  _circleBtn(Icons.add, () => update(0.5)),
+                                  Row(
+                                    children: [
+                                      _circleBtn(Icons.remove, () => update(-0.5)),
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                                        child: Text(
+                                          '${count.toStringAsFixed(1)}',
+                                          style: const TextStyle(fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                      _circleBtn(Icons.add, () => update(0.5)),
+                                    ],
+                                  ),
                                 ],
                               ),
-                            ],
+                            ),
                           ),
                         );
                       },
@@ -205,6 +212,71 @@ class MealDetailScreen extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Text('${value.toStringAsFixed(1)}g', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        ],
+      ),
+    );
+  }
+
+  // ✅ 상세 영양정보 다이얼로그 (현재 개수 반영 + 1개 기준 같이 표시)
+  void showFoodInfoDialog(BuildContext context, FoodItemn food, double count) {
+    final totalCal = food.calories * count;
+    final totalCarb = food.carbohydrates * count;
+    final totalProt = food.protein * count;
+    final totalFat  = food.fat * count;
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(food.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            _kv('1개 기준(≈${food.amount}g)', ''),
+            const SizedBox(height: 4),
+            _kv('칼로리', '${food.calories.toStringAsFixed(1)} kcal'),
+            _kv('탄수화물', '${food.carbohydrates.toStringAsFixed(1)} g'),
+            _kv('단백질', '${food.protein.toStringAsFixed(1)} g'),
+            _kv('지방', '${food.fat.toStringAsFixed(1)} g'),
+            const Divider(height: 24),
+            _kv('현재 수량', '${count.toStringAsFixed(1)} 개'),
+            const SizedBox(height: 4),
+            _kv('총 칼로리', '${totalCal.toStringAsFixed(1)} kcal'),
+            _kv('총 탄수화물', '${totalCarb.toStringAsFixed(1)} g'),
+            _kv('총 단백질', '${totalProt.toStringAsFixed(1)} g'),
+            _kv('총 지방', '${totalFat.toStringAsFixed(1)} g'),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFD5E8C6),
+                  foregroundColor: const Color(0xFF003508),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                child: const Text('닫기', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _kv(String k, String v) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(k, style: const TextStyle(color: Colors.black54)),
+          Text(v, style: const TextStyle(fontWeight: FontWeight.w600)),
         ],
       ),
     );

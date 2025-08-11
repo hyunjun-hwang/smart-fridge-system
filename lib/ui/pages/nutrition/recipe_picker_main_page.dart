@@ -1,61 +1,59 @@
+// lib/ui/pages/nutrition/recipe_page.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:smart_fridge_system/data/models/recipe_model.dart';
-import 'recipe_detail_page.dart';
-
-// ✅ 결과 전달 타입(레시피 선택 시 반환) — 선택 모드에서만 사용
 import 'package:smart_fridge_system/providers/ndata/foodn_item.dart';
+import 'package:smart_fridge_system/ui/pages/nutrition/recipe_picker_detail_page.dart';
 
-class RecipeMainPage extends StatefulWidget {
-  // ✅ 추가: pickMode (기본 false)
-  //  - false: 기존처럼 레시피 보기만
-  //  - true : 상세에서 FoodItemn 선택 후 상위로 반환
+class RecipePage extends StatefulWidget {
+  /// pickMode = true  → 상세에서 "추가하기" 버튼 노출, 선택 시 FoodItemn을 pop으로 반환
+  /// pickMode = false → 그냥 레시피 보기
   final bool pickMode;
 
-  const RecipeMainPage({super.key, this.pickMode = false});
+  const RecipePage({super.key, this.pickMode = false});
 
   @override
-  State<RecipeMainPage> createState() => _RecipeMainPageState();
+  State<RecipePage> createState() => _RecipePageState();
 }
 
-class _RecipeMainPageState extends State<RecipeMainPage> {
+class _RecipePageState extends State<RecipePage> {
+  static const Color _primary = Color(0xFF003508);
+
   final TextEditingController _searchController = TextEditingController();
   String _sortOption = '추천 레시피 순';
 
   bool _isLoading = false;
-  List<Recipe> recipes = [];
+  List<Recipe> _recipes = [];
 
-  // ✅ 경로형 포맷 정보
+  // 식품안전나라 레시피 API (경로형)
   static const String _keyId = 'ff4910709e05408eba7c';
   static const String _base = 'http://openapi.foodsafetykorea.go.kr/api';
-  static const String _serviceId = 'COOKRCP01'; // 레시피(조리순서/칼로리/이미지)
+  static const String _serviceId = 'COOKRCP01';
   static const String _dataType = 'json';
 
   Future<void> _fetchRecipes(String keyword) async {
-    if (keyword.trim().isEmpty) return;
-    setState(() => _isLoading = true);
+    final kw = keyword.trim();
+    if (kw.isEmpty) return;
 
-    final q = Uri.encodeComponent(keyword.trim());
-    // 경로형 포맷: /api/keyId/serviceId/dataType/startIdx/endIdx/RCP_NM=검색어
+    setState(() => _isLoading = true);
+    final q = Uri.encodeComponent(kw);
     const startIdx = 1;
     const endIdx = 10;
     final url = Uri.parse('$_base/$_keyId/$_serviceId/$_dataType/$startIdx/$endIdx/RCP_NM=$q');
 
     try {
       final res = await http.get(url);
-      final bodyStr = utf8.decode(res.bodyBytes);
-
       if (res.statusCode != 200) {
         throw Exception('HTTP ${res.statusCode}');
       }
 
-      final root = jsonDecode(bodyStr);
+      final root = jsonDecode(utf8.decode(res.bodyBytes));
       final rows = root['COOKRCP01']?['row'] as List?;
       if (rows == null || rows.isEmpty) {
         if (mounted) {
-          setState(() => recipes = []);
+          setState(() => _recipes = []);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('검색 결과가 없습니다.')),
           );
@@ -71,17 +69,11 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
         final title = (r['RCP_NM'] ?? '').toString().trim();
         final img = (r['ATT_FILE_NO_MAIN'] ?? '').toString().trim();
 
-        // ✅ kcal: INFO_ENG
-        final kcalStr = (r['INFO_ENG'] ?? '').toString().trim();
-        final kcalDouble = double.tryParse(kcalStr) ?? 0;
-        final kcalVal = kcalDouble.round();
+        final kcal = (double.tryParse((r['INFO_ENG'] ?? '').toString().trim()) ?? 0).round();
+        final carb = double.tryParse((r['INFO_CAR'] ?? '').toString().trim()) ?? 0;
+        final prot = double.tryParse((r['INFO_PRO'] ?? '').toString().trim()) ?? 0;
+        final fat  = double.tryParse((r['INFO_FAT'] ?? '').toString().trim()) ?? 0;
 
-        // ✅ 탄단지
-        final carbVal = double.tryParse((r['INFO_CAR'] ?? '').toString().trim()) ?? 0;
-        final proteinVal = double.tryParse((r['INFO_PRO'] ?? '').toString().trim()) ?? 0;
-        final fatVal = double.tryParse((r['INFO_FAT'] ?? '').toString().trim()) ?? 0;
-
-        // ✅ 조리 순서
         final steps = <String>[];
         for (int i = 1; i <= 20; i++) {
           final key = 'MANUAL${i.toString().padLeft(2, '0')}';
@@ -89,7 +81,6 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
           if (step.isNotEmpty) steps.add(step);
         }
 
-        // ✅ 재료 요약
         final parts = (r['RCP_PARTS_DTLS'] ?? '').toString().trim();
         final Map<String, bool> ing = {};
         if (parts.isNotEmpty) {
@@ -105,30 +96,27 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
           ing[title] = true;
         }
 
-        mapped.add(
-          Recipe(
-            title: title.isEmpty ? '이름 없음' : title,
-            description: (r['RCP_PAT2'] ?? '레시피').toString(),
-            imagePath: img.isEmpty ? 'assets/images/placeholder_food.jpg' : img,
-            time: 0,
-            kcal: kcalVal,
-            carb: carbVal,
-            protein: proteinVal,
-            fat: fatVal,
-            ingredients: ing,
-            steps: steps,
-          ),
-        );
+        mapped.add(Recipe(
+          title: title.isEmpty ? '이름 없음' : title,
+          description: (r['RCP_PAT2'] ?? '레시피').toString(),
+          imagePath: img.isEmpty ? 'assets/images/placeholder_food.jpg' : img,
+          time: 0,
+          kcal: kcal,
+          carb: carb,
+          protein: prot,
+          fat: fat,
+          ingredients: ing,
+          steps: steps,
+        ));
       }
 
-      // ✅ 정렬 (두 가지 옵션만 유지)
       if (_sortOption == '칼로리 순') {
         mapped.sort((a, b) => a.kcal.compareTo(b.kcal));
       } else {
         mapped.sort((a, b) => a.title.compareTo(b.title));
       }
 
-      if (mounted) setState(() => recipes = mapped);
+      if (mounted) setState(() => _recipes = mapped);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -146,7 +134,6 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
     super.dispose();
   }
 
-  // ---------------- UI ----------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -166,12 +153,12 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
                       fontFamily: 'Pretendard Variable',
                       fontWeight: FontWeight.w700,
                       fontSize: 24,
-                      color: Color(0xFF003508),
+                      color: _primary,
                     ),
                   ),
                   const Spacer(),
                   IconButton(
-                    icon: const Icon(Icons.notifications_none, color: Color(0xFF003508)),
+                    icon: const Icon(Icons.notifications_none, color: _primary),
                     onPressed: () {},
                   ),
                 ],
@@ -187,22 +174,18 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
                 decoration: InputDecoration(
                   contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                   hintText: '레시피명을 검색하세요. (예: 김치볶음밥, 된장찌개)',
-                  hintStyle: const TextStyle(
-                    fontFamily: 'Pretendard Variable',
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
-                  prefixIcon: const Icon(Icons.search, color: Color(0xFF003508)),
+                  hintStyle: const TextStyle(fontSize: 14, color: Colors.grey),
+                  prefixIcon: const Icon(Icons.search, color: _primary),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(28),
                     borderSide: const BorderSide(color: Color(0xFF7BAA7F), width: 2),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(28),
-                    borderSide: const BorderSide(color: Color(0xFF003508), width: 2),
+                    borderSide: const BorderSide(color: _primary, width: 2),
                   ),
                 ),
-                onSubmitted: (kw) => _fetchRecipes(kw),
+                onSubmitted: _fetchRecipes,
               ),
             ),
             const SizedBox(height: 12),
@@ -213,25 +196,19 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
               child: Row(
                 children: [
                   PopupMenuButton<String>(
-                    onSelected: (String value) {
+                    onSelected: (value) {
                       setState(() {
                         _sortOption = value;
                         if (_sortOption == '칼로리 순') {
-                          recipes.sort((a, b) => a.kcal.compareTo(b.kcal));
+                          _recipes.sort((a, b) => a.kcal.compareTo(b.kcal));
                         } else {
-                          recipes.sort((a, b) => a.title.compareTo(b.title));
+                          _recipes.sort((a, b) => a.title.compareTo(b.title));
                         }
                       });
                     },
-                    itemBuilder: (BuildContext context) => const [
-                      PopupMenuItem<String>(
-                        value: '추천 레시피 순',
-                        child: Text('추천 레시피 순'),
-                      ),
-                      PopupMenuItem<String>(
-                        value: '칼로리 순',
-                        child: Text('칼로리 순'),
-                      ),
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: '추천 레시피 순', child: Text('추천 레시피 순')),
+                      PopupMenuItem(value: '칼로리 순', child: Text('칼로리 순')),
                     ],
                     child: Row(
                       children: [
@@ -241,10 +218,10 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
                             fontFamily: 'Pretendard Variable',
                             fontWeight: FontWeight.w600,
                             fontSize: 14,
-                            color: Color(0xFF003508),
+                            color: _primary,
                           ),
                         ),
-                        const Icon(Icons.arrow_drop_down, color: Color(0xFF003508)),
+                        const Icon(Icons.arrow_drop_down, color: _primary),
                       ],
                     ),
                   ),
@@ -252,7 +229,7 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
                   ElevatedButton(
                     onPressed: _isLoading ? null : () => _fetchRecipes(_searchController.text),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF003508),
+                      backgroundColor: _primary,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -272,40 +249,32 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
 
             Expanded(
               child: _isLoading
-                  ? const Center(child: CircularProgressIndicator(color: Color(0xFF003508)))
-                  : (recipes.isEmpty
+                  ? const Center(child: CircularProgressIndicator(color: _primary))
+                  : (_recipes.isEmpty
                   ? const Center(child: Text('검색 결과가 없습니다.'))
                   : ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: recipes.length,
+                itemCount: _recipes.length,
                 itemBuilder: (context, index) {
-                  final recipe = recipes[index];
+                  final recipe = _recipes[index];
                   return GestureDetector(
                     onTap: () async {
-                      // ✅ 상세로 이동하고, pickMode면 FoodItemn을 결과로 받는다.
-                      final result = await Navigator.push<FoodItemn>(
+                      // 상세로 이동. pickMode면 FoodItemn 결과 받기
+                      final FoodItemn? result = await Navigator.push<FoodItemn>(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => RecipeDetailPage(
+                          builder: (_) => RecipeDetailPage(
                             recipe: recipe,
-                            // ✅ 상세에서도 선택 모드 토글
                             pickMode: widget.pickMode,
                           ),
                         ),
                       );
-
-                      // ✅ 선택 모드라면 결과가 있을 때 상위로 그대로 반환
                       if (widget.pickMode && result != null && context.mounted) {
+                        // 상위(SearchFoodScreen)로 그대로 반환
                         Navigator.pop(context, result);
                       }
                     },
-                    child: RecipeCard(
-                      imagePath: recipe.imagePath,
-                      title: recipe.title,
-                      subtitle: recipe.description,
-                      ingredients: recipe.ingredients.keys.join(', '),
-                      kcal: recipe.kcal.toDouble(),
-                    ),
+                    child: _RecipeCard(recipe: recipe),
                   );
                 },
               )),
@@ -317,28 +286,18 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
   }
 }
 
-class RecipeCard extends StatelessWidget {
-  final String imagePath;
-  final String title;
-  final String subtitle;
-  final String ingredients;
-  final double kcal; // ⛔️ timeMinutes 삭제
-
-  const RecipeCard({
-    super.key,
-    required this.imagePath,
-    required this.title,
-    required this.subtitle,
-    required this.ingredients,
-    required this.kcal,
-  });
+class _RecipeCard extends StatelessWidget {
+  final Recipe recipe;
+  const _RecipeCard({required this.recipe});
 
   @override
   Widget build(BuildContext context) {
+    const primary = Color(0xFF003508);
+
     Widget img;
-    if (imagePath.startsWith('http')) {
+    if (recipe.imagePath.startsWith('http')) {
       img = Image.network(
-        imagePath,
+        recipe.imagePath,
         width: 100,
         height: 100,
         fit: BoxFit.cover,
@@ -346,7 +305,7 @@ class RecipeCard extends StatelessWidget {
       );
     } else {
       img = Image.asset(
-        imagePath,
+        recipe.imagePath,
         width: 100,
         height: 100,
         fit: BoxFit.cover,
@@ -378,17 +337,17 @@ class RecipeCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
+                  recipe.title,
                   style: const TextStyle(
                     fontFamily: 'Pretendard Variable',
                     fontWeight: FontWeight.w700,
                     fontSize: 16,
-                    color: Color(0xFF003508),
+                    color: primary,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  subtitle,
+                  recipe.description,
                   style: const TextStyle(
                     fontFamily: 'Pretendard Variable',
                     fontWeight: FontWeight.w400,
@@ -403,12 +362,14 @@ class RecipeCard extends StatelessWidget {
                     fontFamily: 'Pretendard Variable',
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
-                    color: Color(0xFF003508),
+                    color: primary,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  ingredients.isEmpty ? '-' : ingredients,
+                  recipe.ingredients.keys.join(', ').isEmpty
+                      ? '-'
+                      : recipe.ingredients.keys.join(', '),
                   softWrap: true,
                   overflow: TextOverflow.ellipsis,
                   maxLines: 2,
@@ -416,20 +377,19 @@ class RecipeCard extends StatelessWidget {
                     fontFamily: 'Pretendard Variable',
                     fontWeight: FontWeight.w400,
                     fontSize: 14,
-                    color: Color(0xFF003508),
+                    color: primary,
                   ),
                 ),
                 const SizedBox(height: 12),
-                // ✅ 아이콘과 텍스트를 같은 줄에 정렬 (깨짐/클리핑 방지)
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const Icon(Icons.local_fire_department, size: 16, color: Color(0xFF003508)),
+                    const Icon(Icons.local_fire_department, size: 16, color: primary),
                     const SizedBox(width: 4),
                     Text(
-                      '${kcal.toStringAsFixed(0)}kcal',
-                      style: const TextStyle(fontSize: 13, color: Color(0xFF003508)),
+                      '${recipe.kcal.toStringAsFixed(0)}kcal',
+                      style: const TextStyle(fontSize: 13, color: primary),
                     ),
                   ],
                 ),

@@ -20,7 +20,7 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   await Hive.initFlutter();
-
+  await Hive.openBox('nutritionBox');
   // Hive 어댑터 등록
   Hive.registerAdapter(FoodItemAdapter());
   Hive.registerAdapter(FoodCategoryAdapter());
@@ -30,6 +30,7 @@ void main() async {
   runApp(const MyApp());
 }
 
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -37,8 +38,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => DailyNutritionProvider()),
+
         ChangeNotifierProvider(create: (_) => FoodProvider()),
+        ChangeNotifierProvider(create: (_) => DailyNutritionProvider()..restore()), // ✅ 수정
+
       ],
       child: MaterialApp(
         title: 'Smart Fridge System',

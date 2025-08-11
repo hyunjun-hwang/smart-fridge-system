@@ -6,13 +6,9 @@ import 'package:provider/provider.dart';
 import 'package:smart_fridge_system/providers/daily_nutrition_provider.dart';
 import 'package:smart_fridge_system/providers/ndata/foodn_item.dart';
 import 'package:smart_fridge_system/ui/pages/nutrition/record_entry_screen.dart';
-// 제거됨: 카드/다이얼로그 미사용
-// import 'package:smart_fridge_system/ui/pages/nutrition/food_detail_dialog.dart';
 import 'package:smart_fridge_system/ui/pages/nutrition/addfood_screen.dart';
-
-// ✅ 레시피 메인 페이지
+import 'package:smart_fridge_system/ui/pages/nutrition/recipe_picker_main_page.dart';
 import 'package:smart_fridge_system/ui/pages/recipe/recipe_main_page.dart';
-
 class SearchFoodScreen extends StatefulWidget {
   final String mealType;
   final DateTime date;
@@ -28,6 +24,10 @@ class SearchFoodScreen extends StatefulWidget {
 }
 
 class _SearchFoodScreenState extends State<SearchFoodScreen> {
+  // Colors
+  static const Color _primary = Color(0xFF003508);
+  static const Color _chipSel = Color(0xFFD5E8C6);
+
   int selectedIndex = 0;
   final List<String> filters = ['검색', '즐겨찾기', '내 음식', '냉장고'];
   final TextEditingController _searchController = TextEditingController();
@@ -80,18 +80,18 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
     return score;
   }
 
-  // ----------------------------------------
-  // ✅ 일반식품처럼 보이는 이름에 가점
-  // ----------------------------------------
+  // 일반식품 우선 점수
   double _genericPreferenceScore(String name) {
     final n = _norm(name);
 
     final hasDigits = RegExp(r'\d').hasMatch(n);
     final hasUnit = RegExp(r'(g|ml|kg|l|kcal|mg)\b').hasMatch(n);
-    final hasBracket = n.contains('(') || n.contains(')') || n.contains('[') || n.contains(']');
+    final hasBracket =
+        n.contains('(') || n.contains(')') || n.contains('[') || n.contains(']');
     final hasBrandKo = n.contains('㈜') || n.contains('(주)') || n.contains('주식회사');
     final hasBrandEn = RegExp(r'\b(co|corp|ltd|inc)\b').hasMatch(n);
-    final hasFlavor = RegExp(r'(맛|향|오리지널|라이트|스페셜|프리미엄)').hasMatch(n);
+    final hasFlavor =
+    RegExp(r'(맛|향|오리지널|라이트|스페셜|프리미엄)').hasMatch(n);
     final hasProductCue =
     RegExp(r'(스낵|라면|음료|드링크|시리얼|바|비스킷|쿠키|캔|펫병|팩|세트)').hasMatch(n);
 
@@ -116,7 +116,7 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
   }
 
   // ----------------------------------------
-  // ✅ 식품안전나라 영양DB 호출
+  // 식품안전나라 영양DB 호출
   // ----------------------------------------
   Future<void> fetchFoodInfo(String keyword) async {
     final kw = keyword.trim();
@@ -200,7 +200,7 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
       } catch (_) {}
     }
 
-    // ✅ 정렬: 일반식품 우선 + 관련도
+    // 정렬: 일반식품 우선 + 관련도
     parsed.sort((a, b) {
       final relA = _relevanceScore(a.name, kw);
       final relB = _relevanceScore(b.name, kw);
@@ -248,6 +248,160 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
     );
   }
 
+  // 하단 시트: 영양 성분 + 수량 선택 + 추가하기
+  void _openFoodSheet(FoodItemn base) {
+    double count = 1.0;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      isScrollControlled: false,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            final totKcal = (base.calories * count);
+            final totCarb = (base.carbohydrates * count);
+            final totPro  = (base.protein * count);
+            final totFat  = (base.fat * count);
+
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    alignment: Alignment.center,
+                    child: Container(
+                      width: 40, height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    base.name,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800, fontSize: 18, color: _primary),
+                  ),
+                  const SizedBox(height: 4),
+                  const SizedBox(height: 8),
+
+                  const Text('영양성분', style: TextStyle(
+                      fontWeight: FontWeight.w700, color: _primary)),
+                  const SizedBox(height: 8),
+
+                  _infoRow('칼로리', '${base.calories.toStringAsFixed(1)} kcal'),
+                  _infoRow('탄수화물', '${base.carbohydrates.toStringAsFixed(1)} g'),
+                  _infoRow('단백질', '${base.protein.toStringAsFixed(1)} g'),
+                  _infoRow('지방', '${base.fat.toStringAsFixed(1)} g'),
+
+                  const SizedBox(height: 14),
+                  Container(height: 1, color: Colors.grey.shade200),
+                  const SizedBox(height: 12),
+
+                  Row(
+                    children: [
+                      const Text('수량', style: TextStyle(fontWeight: FontWeight.w700, color: _primary)),
+                      const Spacer(),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          const Text('총 칼로리', style: TextStyle(color: Colors.black54)),
+                          Text(
+                            '${totKcal.toStringAsFixed(1)} kcal',
+                            style: const TextStyle(
+                                color: _primary, fontWeight: FontWeight.w800, fontSize: 18),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+
+                  Row(
+                    children: [
+                      _qtyBtn(Icons.remove, () {
+                        setState(() {
+                          count = (count - 0.5).clamp(0.5, 99.0);
+                        });
+                      }),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: _chipSel),
+                          borderRadius: BorderRadius.circular(10),
+                          color: Colors.white,
+                        ),
+                        child: Text(count.toStringAsFixed(1),
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w800, color: _primary)),
+                      ),
+                      _qtyBtn(Icons.add, () {
+                        setState(() {
+                          count = (count + 0.5).clamp(0.5, 99.0);
+                        });
+                      }),
+                    ],
+                  ),
+
+                  const SizedBox(height: 8),
+                  _infoRow('총 탄수화물', '${totCarb.toStringAsFixed(1)} g'),
+                  _infoRow('총 단백질', '${totPro.toStringAsFixed(1)} g'),
+                  _infoRow('총 지방', '${totFat.toStringAsFixed(1)} g'),
+
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context); // 시트 닫기
+                        _addFoodAndReturn(base.copyWith(count: count));
+                      },
+                      child: const Text('추가하기'),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _qtyBtn(IconData icon, VoidCallback onTap) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 6),
+    child: Ink(
+      decoration: BoxDecoration(
+        border: Border.all(color: _chipSel),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Icon(icon, color: _primary),
+        ),
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -256,12 +410,12 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF003508)),
+          icon: const Icon(Icons.arrow_back, color: _primary),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           '음식 검색',
-          style: TextStyle(color: Color(0xFF003508), fontWeight: FontWeight.bold),
+          style: TextStyle(color: _primary, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
       ),
@@ -282,7 +436,7 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
                       label: Text(filters[index]),
                       selected: isSelected,
                       onSelected: (_) => setState(() => selectedIndex = index),
-                      selectedColor: const Color(0xFFD5E8C6),
+                      selectedColor: _chipSel,
                       backgroundColor: Colors.white,
                       labelStyle: TextStyle(
                         color: isSelected ? Colors.black : Colors.grey[600],
@@ -297,7 +451,7 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
             ),
           ),
 
-          // ✅ 검색 탭에서만 검색창/버튼
+          // 검색 탭에서만 검색창/버튼
           if (selectedIndex == 0) ...[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -314,7 +468,8 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
                     hintText: '음식 이름을 검색하세요.',
                     prefixIcon: Icon(Icons.search, color: Colors.grey),
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                    contentPadding:
+                    EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                   ),
                   onSubmitted: (keyword) {
                     if (keyword.trim().isNotEmpty) {
@@ -339,7 +494,7 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF003508),
+                    backgroundColor: _primary,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(24),
@@ -350,7 +505,8 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
                       ? const SizedBox(
                     height: 20,
                     width: 20,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                    child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 3),
                   )
                       : const Text('검색'),
                 ),
@@ -358,7 +514,7 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
             ),
           ],
 
-          // ✅ 내 음식 탭에서만 버튼 노출
+          // 내 음식 탭에서만 버튼 노출
           if (selectedIndex == 2)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -378,9 +534,10 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
                         }
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFD5E8C6),
-                        foregroundColor: const Color(0xFF003508),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        backgroundColor: _chipSel,
+                        foregroundColor: _primary,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                       child: const Text('내 음식 추가하기'),
@@ -389,20 +546,23 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: ElevatedButton(
-                      // ✅ 레시피에서 FoodItemn을 받아와 즉시 반영
                       onPressed: () async {
-                        final FoodItemn? selectedFromRecipe = await Navigator.push<FoodItemn>(
+                        final FoodItemn? selectedFromRecipe =
+                        await Navigator.push<FoodItemn>(
                           context,
-                          MaterialPageRoute(builder: (_) => const RecipeMainPage()),
+                          MaterialPageRoute(
+                            builder: (_) => const RecipeMainPage(pickMode: true),
+                          ),
                         );
                         if (selectedFromRecipe != null) {
                           _addFoodAndReturn(selectedFromRecipe);
                         }
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFD5E8C6),
-                        foregroundColor: const Color(0xFF003508),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        backgroundColor: _chipSel,
+                        foregroundColor: _primary,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                       child: const Text('레시피에서 추가하기'),
@@ -416,7 +576,7 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
 
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: Color(0xFF003508)))
+                ? const Center(child: CircularProgressIndicator(color: _primary))
                 : Builder(
               builder: (_) {
                 if (selectedIndex == 0) return _buildFoodList(recentSearches);
@@ -448,7 +608,7 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFD5E8C6), width: 2),
+            border: Border.all(color: _chipSel, width: 2),
             boxShadow: const [
               BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
             ],
@@ -462,7 +622,7 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             subtitle: Text(
-              '1회 제공량(${item.amount}g)당 열량: ${item.calories.toStringAsFixed(1)} kcal',
+              '열량: ${item.calories.toStringAsFixed(1)} kcal  •  탄 ${item.carbohydrates.toStringAsFixed(1)}g  단 ${item.protein.toStringAsFixed(1)}g  지 ${item.fat.toStringAsFixed(1)}g',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -479,11 +639,24 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
                 });
               },
             ),
-            // ✅ 변경: 카드/다이얼로그 없이 바로 반영
-            onTap: () => _addFoodAndReturn(item),
+            onTap: () => _openFoodSheet(item), // ← 상세 시트 띄움
           ),
         );
       },
     );
   }
+
+  // 공용 간단 Row
+  static Widget _infoRow(String k, String v) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 2),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(k, style: const TextStyle(color: Colors.black54)),
+        Text(v, style: const TextStyle(fontWeight: FontWeight.w700)),
+      ],
+    ),
+  );
 }
+
+

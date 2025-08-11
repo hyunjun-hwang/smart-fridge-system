@@ -1,28 +1,24 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:hive/hive.dart';
 import 'package:smart_fridge_system/providers/ndata/foodn_item.dart';
 
 class DailyNutritionProvider with ChangeNotifier {
   double _targetCalories = 1800;
+  final Map<DateTime, Map<String, double>> _dailyNutritions = {};
+  final Map<DateTime, Map<String, List<FoodItemn>>> _mealFoods = {};
+  DateTime _selectedDate = DateTime.now();
+
+  // ---------- Getter ----------
+  double get targetCalories => _targetCalories;
+  DateTime get selectedDate => _selectedDate;
+  Map<DateTime, Map<String, double>> get dailyNutritions => _dailyNutritions;
+
   double get totalCalories {
     final keyDate = _normalizeDate(_selectedDate);
     return _dailyNutritions[keyDate]?['calories'] ?? 0;
   }
-
-  double get targetCalories => _targetCalories;
-
-  void setTargetCalories(double calories) {
-    _targetCalories = calories;
-    notifyListeners();
-  }
-
-  final Map<DateTime, Map<String, double>> _dailyNutritions = {};
-  final Map<DateTime, Map<String, List<FoodItemn>>> _mealFoods = {};
-
-  DateTime _selectedDate = DateTime.now();
-
-  Map<DateTime, Map<String, double>> get dailyNutritions => _dailyNutritions;
-  DateTime get selectedDate => _selectedDate;
 
   Map<String, double> get currentDayNutrition {
     final keyDate = _normalizeDate(_selectedDate);
@@ -34,9 +30,17 @@ class DailyNutritionProvider with ChangeNotifier {
     };
   }
 
+  // ---------- 상태 변경(저장 포함) ----------
+  void setTargetCalories(double calories) {
+    _targetCalories = calories;
+    notifyListeners();
+    _persist();
+  }
+
   void setSelectedDate(DateTime date) {
     _selectedDate = _normalizeDate(date);
     notifyListeners();
+    _persist();
   }
 
   void addFood(String mealType, DateTime date, FoodItemn item) {
@@ -58,6 +62,7 @@ class DailyNutritionProvider with ChangeNotifier {
 
     _recalculateDayNutrition(keyDate);
     notifyListeners();
+    _persist();
   }
 
   void updateFood(String mealType, DateTime date, FoodItemn item) {
@@ -76,6 +81,7 @@ class DailyNutritionProvider with ChangeNotifier {
 
     _recalculateDayNutrition(keyDate);
     notifyListeners();
+    _persist();
   }
 
   void removeFoodItem(String mealType, DateTime date, String foodName) {
@@ -87,9 +93,9 @@ class DailyNutritionProvider with ChangeNotifier {
 
     _recalculateDayNutrition(keyDate);
     notifyListeners();
+    _persist();
   }
 
-  /// ✅ 안전한 삭제 (음식 객체 기반)
   void removeFoodItemByObject(String mealType, DateTime date, FoodItemn item) {
     final keyDate = _normalizeDate(date);
     final foodList = _mealFoods[keyDate]?[mealType];
@@ -104,28 +110,19 @@ class DailyNutritionProvider with ChangeNotifier {
 
     _recalculateDayNutrition(keyDate);
     notifyListeners();
+    _persist();
   }
 
-  void _recalculateDayNutrition(DateTime keyDate) {
-    double totalCalories = 0, carbs = 0, protein = 0, fat = 0;
+  Future<void> clearAll() async {
+    _dailyNutritions.clear();
+    _mealFoods.clear();
+    notifyListeners();
 
-    _mealFoods[keyDate]?.forEach((_, List<FoodItemn> mealFoods) {
-      for (final item in mealFoods) {
-        totalCalories += item.calories * item.count;
-        carbs += item.carbohydrates * item.count;
-        protein += item.protein * item.count;
-        fat += item.fat * item.count;
-      }
-    });
-
-    _dailyNutritions[keyDate] = {
-      'calories': totalCalories,
-      'carbohydrates': carbs,
-      'protein': protein,
-      'fat': fat,
-    };
+    final box = Hive.box('nutritionBox');
+    await box.delete(_boxKey); // 로컬 데이터도 삭제
   }
 
+  // ---------- 조회/유틸 ----------
   Map<String, double> getMealNutrition(String meal, DateTime date) {
     final keyDate = _normalizeDate(date);
     final foods = _mealFoods[keyDate]?[meal] ?? [];
@@ -205,9 +202,139 @@ class DailyNutritionProvider with ChangeNotifier {
     return DateTime(date.year, date.month, date.day);
   }
 
-  void clearAll() {
-    _dailyNutritions.clear();
-    _mealFoods.clear();
-    notifyListeners();
+  void _recalculateDayNutrition(DateTime keyDate) {
+    double totalCalories = 0, carbs = 0, protein = 0, fat = 0;
+
+    _mealFoods[keyDate]?.forEach((_, List<FoodItemn> mealFoods) {
+      for (final item in mealFoods) {
+        totalCalories += item.calories * item.count;
+        carbs += item.carbohydrates * item.count;
+        protein += item.protein * item.count;
+        fat += item.fat * item.count;
+      }
+    });
+
+    _dailyNutritions[keyDate] = {
+      'calories': totalCalories,
+      'carbohydrates': carbs,
+      'protein': protein,
+      'fat': fat,
+    };
   }
+
+  // ===================== Hive 저장/복원 =====================
+  static const String _boxKey = 'daily_nutrition_state_v1';
+
+  /// 앱 시작 시 한 번 호출해서 복원
+  Future<void> restore() async {
+    final box = Hive.box('nutritionBox');
+    final raw = box.get(_boxKey);
+    if (raw == null) return;
+
+    try {
+      final map = Map<String, dynamic>.from(json.decode(raw as String));
+
+      _targetCalories = (map['targetCalories'] ?? 1800).toDouble();
+
+      final sel = map['selectedDate'] as String?;
+      if (sel != null) {
+        _selectedDate = _parseDateKey(sel);
+      }
+
+      _dailyNutritions.clear();
+      final dn = map['dailyNutritions'] as Map<String, dynamic>?;
+      if (dn != null) {
+        dn.forEach((dateKey, nutAny) {
+          final nut = Map<String, dynamic>.from(nutAny as Map);
+          _dailyNutritions[_parseDateKey(dateKey)] = {
+            'calories': (nut['calories'] ?? 0).toDouble(),
+            'carbohydrates': (nut['carbohydrates'] ?? 0).toDouble(),
+            'protein': (nut['protein'] ?? 0).toDouble(),
+            'fat': (nut['fat'] ?? 0).toDouble(),
+          };
+        });
+      }
+
+      _mealFoods.clear();
+      final mf = map['mealFoods'] as Map<String, dynamic>?;
+      if (mf != null) {
+        mf.forEach((dateKey, mealAny) {
+          final date = _parseDateKey(dateKey);
+          _mealFoods[date] = {};
+          final mealMap = Map<String, dynamic>.from(mealAny as Map);
+          mealMap.forEach((meal, listAny) {
+            final list = (listAny as List)
+                .map((e) => _foodFromMap(Map<String, dynamic>.from(e as Map)))
+                .toList();
+            _mealFoods[date]![meal] = list;
+          });
+        });
+      }
+
+      notifyListeners();
+    } catch (_) {
+      // 파싱 실패 시 무시 (필요 시 box.delete(_boxKey))
+    }
+  }
+
+  Future<void> _persist() async {
+    final box = Hive.box('nutritionBox');
+
+    final dn = <String, Map<String, double>>{};
+    _dailyNutritions.forEach((date, nut) {
+      dn[_dateKey(date)] = {
+        'calories': (nut['calories'] ?? 0).toDouble(),
+        'carbohydrates': (nut['carbohydrates'] ?? 0).toDouble(),
+        'protein': (nut['protein'] ?? 0).toDouble(),
+        'fat': (nut['fat'] ?? 0).toDouble(),
+      };
+    });
+
+    final mf = <String, Map<String, List<Map<String, dynamic>>>>{};
+    _mealFoods.forEach((date, mealMap) {
+      final mealOut = <String, List<Map<String, dynamic>>>{};
+      mealMap.forEach((meal, foods) {
+        mealOut[meal] = foods.map(_foodToMap).toList();
+      });
+      mf[_dateKey(date)] = mealOut;
+    });
+
+    final snapshot = {
+      'targetCalories': _targetCalories,
+      'selectedDate': _dateKey(_selectedDate),
+      'dailyNutritions': dn,
+      'mealFoods': mf,
+    };
+
+    await box.put(_boxKey, json.encode(snapshot));
+  }
+
+  // ---------- 직렬화 헬퍼 ----------
+  String _dateKey(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
+  DateTime _parseDateKey(String s) {
+    final p = s.split('-').map(int.parse).toList();
+    return DateTime(p[0], p[1], p[2]);
+  }
+
+  Map<String, dynamic> _foodToMap(FoodItemn f) => {
+    'name': f.name,
+    'calories': f.calories,
+    'carbohydrates': f.carbohydrates,
+    'protein': f.protein,
+    'fat': f.fat,
+    'amount': f.amount,
+    'count': f.count,
+    'imagePath': f.imagePath,
+  };
+
+  FoodItemn _foodFromMap(Map<String, dynamic> m) => FoodItemn(
+    name: (m['name'] ?? '') as String,
+    calories: (m['calories'] ?? 0).toDouble(),
+    carbohydrates: (m['carbohydrates'] ?? 0).toDouble(),
+    protein: (m['protein'] ?? 0).toDouble(),
+    fat: (m['fat'] ?? 0).toDouble(),
+    amount: (m['amount'] ?? 0).toDouble(),
+    count: (m['count'] ?? 0).toDouble(),
+    imagePath: (m['imagePath'] ?? '') as String,
+  );
 }

@@ -1,17 +1,59 @@
 import 'package:flutter/material.dart';
 import 'package:smart_fridge_system/data/models/recipe_model.dart';
+// ✅ 선택 결과로 돌려줄 타입
+import 'package:smart_fridge_system/providers/ndata/foodn_item.dart';
 
 class RecipeDetailPage extends StatefulWidget {
   final Recipe recipe;
-  const RecipeDetailPage({super.key, required this.recipe});
+
+  /// ✅ 추가: pickMode (기본 false)
+  /// - false: 기존처럼 상세만 보기
+  /// - true : 하단에 '서빙 수 + 추가' 바가 나타나고, 누르면 FoodItemn으로 pop
+  final bool pickMode;
+
+  const RecipeDetailPage({
+    super.key,
+    required this.recipe,
+    this.pickMode = false,
+  });
 
   @override
   State<RecipeDetailPage> createState() => _RecipeDetailPageState();
 }
 
 class _RecipeDetailPageState extends State<RecipeDetailPage> {
+  // ✅ 선택 모드일 때 사용할 서빙 수 (0.5 단위)
+  double _serving = 1.0;
+
+  // ✅ Recipe -> FoodItemn 변환 (서빙 수 반영)
+  FoodItemn _toFoodItemn(Recipe r, double serving) {
+    // 레시피의 kcal은 int일 수 있으니 double로 변환
+    final kcal = (r.kcal.toDouble()) * serving;
+    final carb = (r.carb) * serving;
+    final prot = (r.protein) * serving;
+    final fat  = (r.fat) * serving;
+
+    return FoodItemn(
+      name: r.title,
+      calories: kcal,
+      carbohydrates: carb,
+      protein: prot,
+      fat: fat,
+      amount: 1,      // 레시피 1회분 기준 (SearchFoodScreen 목록엔 안나오므로 큰 영향 없음)
+      count: serving, // 서빙 수
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final recipe = widget.recipe;
+
+    // ✅ 총 영양(서빙 반영) 표시값 (pickMode에서 하단 바에만 사용)
+    final scaledKcal = recipe.kcal.toDouble() * _serving;
+    final scaledCarb = recipe.carb * _serving;
+    final scaledProt = recipe.protein * _serving;
+    final scaledFat  = recipe.fat * _serving;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -31,10 +73,128 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                     _Ingredients(recipe: widget.recipe),
                     const SizedBox(height: 24),
                     _RecipeSteps(recipe: widget.recipe),
+                    const SizedBox(height: 12),
+                    if (widget.pickMode) ...[
+                      // ✅ 선택 모드일 때, 현재 서빙 반영 총 영양 간단 요약(읽기 전용)
+                      const Divider(height: 32),
+                      _PickedSummary(
+                        serving: _serving,
+                        kcal: scaledKcal,
+                        carb: scaledCarb,
+                        protein: scaledProt,
+                        fat: scaledFat,
+                      ),
+                      const SizedBox(height: 80), // 하단 고정 바와 겹치지 않도록 여백
+                    ],
                   ],
                 ),
               ),
             ),
+
+            // ✅ 하단 고정 선택 바 (pickMode일 때만)
+            if (widget.pickMode)
+              SafeArea(
+                top: false,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF000000).withOpacity(0.08),
+                        blurRadius: 8,
+                        offset: const Offset(0, -2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      // 서빙 스테퍼
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: const Color(0xFFD6E2C0)),
+                          borderRadius: BorderRadius.circular(12),
+                          color: const Color(0xFFF9FBF5),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.remove, color: Color(0xFF003508)),
+                              onPressed: () {
+                                setState(() {
+                                  _serving = (_serving - 0.5).clamp(0.5, 99.0);
+                                });
+                              },
+                              tooltip: '서빙 수 감소',
+                            ),
+                            Text(
+                              _serving.toStringAsFixed(1),
+                              style: const TextStyle(
+                                fontFamily: 'Pretendard Variable',
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF003508),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.add, color: Color(0xFF003508)),
+                              onPressed: () {
+                                setState(() {
+                                  _serving = (_serving + 0.5).clamp(0.5, 99.0);
+                                });
+                              },
+                              tooltip: '서빙 수 증가',
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+
+                      // 총 칼로리 미니표기
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              '총 칼로리',
+                              style: TextStyle(
+                                fontFamily: 'Pretendard Variable',
+                                fontSize: 12,
+                                color: Color(0xFF7BAA7F),
+                              ),
+                            ),
+                            Text(
+                              '${scaledKcal.toStringAsFixed(0)} kcal',
+                              style: const TextStyle(
+                                fontFamily: 'Pretendard Variable',
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                                color: Color(0xFF003508),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // 추가 버튼
+                      ElevatedButton(
+                        onPressed: () {
+                          final item = _toFoodItemn(recipe, _serving);
+                          Navigator.pop(context, item); // ✅ 상위(RecipeMainPage → SearchFoodScreen)로 반환
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF003508),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('이 레시피 추가'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -416,6 +576,77 @@ class _RecipeSteps extends StatelessWidget {
               );
             }).toList(),
           ),
+      ],
+    );
+  }
+}
+
+/* --- 선택 모드 서머리 (하단 바 위에 간단 표시) --- */
+
+class _PickedSummary extends StatelessWidget {
+  final double serving;
+  final double kcal;
+  final double carb;
+  final double protein;
+  final double fat;
+
+  const _PickedSummary({
+    required this.serving,
+    required this.kcal,
+    required this.carb,
+    required this.protein,
+    required this.fat,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FBF5),
+        border: Border.all(color: const Color(0xFFD6E2C0)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _kv('서빙 수', '${serving.toStringAsFixed(1)}'),
+          ),
+          Expanded(
+            child: _kv('총 칼로리', '${kcal.toStringAsFixed(0)} kcal'),
+          ),
+          Expanded(
+            child: _kv('탄/단/지',
+                '${carb.toStringAsFixed(1)}/${protein.toStringAsFixed(1)}/${fat.toStringAsFixed(1)} g'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _kv(String k, String v) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          k,
+          style: const TextStyle(
+            fontFamily: 'Pretendard Variable',
+            fontSize: 12,
+            color: Color(0xFF7BAA7F),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          v,
+          style: const TextStyle(
+            fontFamily: 'Pretendard Variable',
+            fontWeight: FontWeight.w700,
+            fontSize: 14,
+            color: Color(0xFF003508),
+          ),
+        ),
       ],
     );
   }
