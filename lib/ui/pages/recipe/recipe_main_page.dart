@@ -63,19 +63,15 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
         final title = (r['RCP_NM'] ?? '').toString().trim();
         final img = (r['ATT_FILE_NO_MAIN'] ?? '').toString().trim();
 
-        // ✅ kcal: INFO_ENG (문자열일 수 있으니 double로 파싱)
+        // ✅ kcal: INFO_ENG
         final kcalStr = (r['INFO_ENG'] ?? '').toString().trim();
         final kcalDouble = double.tryParse(kcalStr) ?? 0;
-        final kcalVal = kcalDouble.round(); // Recipe.kcal이 int라면 반올림 저장
+        final kcalVal = kcalDouble.round();
 
-        // ✅ 탄단지: 실제 키 이름 사용 (INFO_CAR, INFO_PRO, INFO_FAT)
-        final carbStr = (r['INFO_CAR'] ?? '').toString().trim();
-        final proteinStr = (r['INFO_PRO'] ?? '').toString().trim();
-        final fatStr = (r['INFO_FAT'] ?? '').toString().trim();
-
-        final carbVal = double.tryParse(carbStr) ?? 0;
-        final proteinVal = double.tryParse(proteinStr) ?? 0;
-        final fatVal = double.tryParse(fatStr) ?? 0;
+        // ✅ 탄단지
+        final carbVal = double.tryParse((r['INFO_CAR'] ?? '').toString().trim()) ?? 0;
+        final proteinVal = double.tryParse((r['INFO_PRO'] ?? '').toString().trim()) ?? 0;
+        final fatVal = double.tryParse((r['INFO_FAT'] ?? '').toString().trim()) ?? 0;
 
         // ✅ 조리 순서
         final steps = <String>[];
@@ -85,7 +81,7 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
           if (step.isNotEmpty) steps.add(step);
         }
 
-        // ✅ 재료(상세 텍스트) 간단 분해
+        // ✅ 재료 요약
         final parts = (r['RCP_PARTS_DTLS'] ?? '').toString().trim();
         final Map<String, bool> ing = {};
         if (parts.isNotEmpty) {
@@ -106,18 +102,18 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
             title: title.isEmpty ? '이름 없음' : title,
             description: (r['RCP_PAT2'] ?? '레시피').toString(),
             imagePath: img.isEmpty ? 'assets/images/placeholder_food.jpg' : img,
-            time: 0,              // 명확한 시간 필드 없음
-            kcal: kcalVal,        // int 저장
-            carb: carbVal,        // double
-            protein: proteinVal,  // double
-            fat: fatVal,          // double
+            time: 0,
+            kcal: kcalVal,
+            carb: carbVal,
+            protein: proteinVal,
+            fat: fatVal,
             ingredients: ing,
             steps: steps,
           ),
         );
       }
 
-      // ✅ 정렬
+      // ✅ 정렬 (두 가지 옵션만 유지)
       if (_sortOption == '칼로리 순') {
         mapped.sort((a, b) => a.kcal.compareTo(b.kcal));
       } else {
@@ -228,10 +224,6 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
                         value: '칼로리 순',
                         child: Text('칼로리 순'),
                       ),
-                      PopupMenuItem<String>(
-                        value: '유통기한 임박 순',
-                        child: Text('유통기한 임박 순'),
-                      ),
                     ],
                     child: Row(
                       children: [
@@ -294,8 +286,7 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
                       title: recipe.title,
                       subtitle: recipe.description,
                       ingredients: recipe.ingredients.keys.join(', '),
-                      timeMinutes: recipe.time,
-                      kcal: recipe.kcal.toDouble(), // 카드 표시에 double 사용
+                      kcal: recipe.kcal.toDouble(),
                     ),
                   );
                 },
@@ -313,8 +304,7 @@ class RecipeCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final String ingredients;
-  final int timeMinutes;
-  final double kcal;
+  final double kcal; // ⛔️ timeMinutes 삭제
 
   const RecipeCard({
     super.key,
@@ -322,7 +312,6 @@ class RecipeCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.ingredients,
-    required this.timeMinutes,
     required this.kcal,
   });
 
@@ -413,15 +402,11 @@ class RecipeCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
+                // ✅ 아이콘과 텍스트를 같은 줄에 정렬 (깨짐/클리핑 방지)
                 Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const Icon(Icons.access_time, size: 16, color: Color(0xFF003508)),
-                    const SizedBox(width: 4),
-                    Text(
-                      timeMinutes > 0 ? '${timeMinutes}분' : '-',
-                      style: const TextStyle(fontSize: 13, color: Color(0xFF003508)),
-                    ),
-                    const SizedBox(width: 16),
                     const Icon(Icons.local_fire_department, size: 16, color: Color(0xFF003508)),
                     const SizedBox(width: 4),
                     Text(
