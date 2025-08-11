@@ -1,36 +1,28 @@
-// FILE: shopping_list_modal.dart
-
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:smart_fridge_system/data/models/shopping_item.dart';
+import 'package:smart_fridge_system/providers/shopping_list_provider.dart';
 
-class ShoppingItem {
-  final int id;
-  String name;
-  bool isChecked;
-
-  ShoppingItem({required this.id, required this.name, this.isChecked = false});
-}
-
+/// 장보기 목록 모달
 class ShoppingListModal extends StatefulWidget {
-  final List<ShoppingItem> initialItems;
-  const ShoppingListModal({super.key, this.initialItems = const []});
+  const ShoppingListModal({super.key});
 
   @override
   State<ShoppingListModal> createState() => _ShoppingListModalState();
 }
 
 class _ShoppingListModalState extends State<ShoppingListModal> {
-  final List<ShoppingItem> _shoppingList = [];
+  final List<ShoppingItem> _tempShoppingList = [];
   final _textController = TextEditingController();
   final _focusNode = FocusNode();
-  int? _editingId; // 현재 편집 중인 아이템의 ID
+  int? _editingId;
 
   @override
   void initState() {
     super.initState();
-    // [✓] 전달받은 아이템 리스트로 _shoppingList를 초기화
-    // map을 사용하여 새로운 리스트를 생성함으로써, 모달 내의 변경사항이 '닫기'를 누르기 전까지 메인 페이지에 영향을 주지 않도록 합니다.
-    _shoppingList.addAll(widget.initialItems.map(
-            (item) => ShoppingItem(id: item.id, name: item.name, isChecked: item.isChecked)));
+    final initialItems = context.read<ShoppingListProvider>().shoppingItems;
+    _tempShoppingList.addAll(initialItems.map((item) =>
+        ShoppingItem(id: item.id, name: item.name, isChecked: item.isChecked)));
   }
 
   @override
@@ -40,11 +32,12 @@ class _ShoppingListModalState extends State<ShoppingListModal> {
     super.dispose();
   }
 
+  /// 새 아이템 추가
   void _addNewItem() {
     if (_textController.text.trim().isNotEmpty) {
       setState(() {
-        _shoppingList.add(ShoppingItem(
-            id: DateTime.now().millisecondsSinceEpoch, // 고유 ID 생성
+        _tempShoppingList.add(ShoppingItem(
+            id: DateTime.now().millisecondsSinceEpoch,
             name: _textController.text.trim()));
         _textController.clear();
         _editingId = null;
@@ -57,16 +50,18 @@ class _ShoppingListModalState extends State<ShoppingListModal> {
     }
   }
 
+  /// 아이템 수정 또는 삭제
   void _updateItem(ShoppingItem item) {
     if (_textController.text.trim().isEmpty) {
-      // 텍스트를 모두 지우고 엔터치면 삭제
       setState(() {
-        _shoppingList.removeWhere((element) => element.id == item.id);
+        _tempShoppingList.removeWhere((element) => element.id == item.id);
         _editingId = null;
       });
     } else {
       setState(() {
-        item.name = _textController.text.trim();
+        final targetItem =
+        _tempShoppingList.firstWhere((element) => element.id == item.id);
+        targetItem.name = _textController.text.trim();
         _editingId = null;
       });
     }
@@ -74,12 +69,11 @@ class _ShoppingListModalState extends State<ShoppingListModal> {
     _focusNode.unfocus();
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Padding(
-      // 키보드가 올라올 때 UI가 가려지지 않도록 설정
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding:
+      EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
         padding: const EdgeInsets.all(24.0),
         decoration: const BoxDecoration(
@@ -98,33 +92,33 @@ class _ShoppingListModalState extends State<ShoppingListModal> {
             Flexible(
               child: ListView.builder(
                 shrinkWrap: true,
-                itemCount: _shoppingList.length + 1, // '추가하기' 포함
+                itemCount: _tempShoppingList.length + 1,
                 itemBuilder: (context, index) {
-                  if (index == _shoppingList.length) {
-                    // 마지막 항목일 때 위쪽에 간격을 추가합니다.
-                    return Column(
-                      children: [
-                        const SizedBox(height: 10), // 원하는 간격 크기로 조절
-                        _buildAddItemTile(),
-                      ],
+                  if (index == _tempShoppingList.length) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 10.0),
+                      child: _buildAddItemTile(),
                     );
                   }
-                  final item = _shoppingList[index];
+                  final item = _tempShoppingList[index];
                   return _buildShoppingItemTile(item);
                 },
               ),
             ),
             const SizedBox(height: 20),
+            // 변경사항 저장 및 닫기
             ElevatedButton(
               onPressed: () {
-                Navigator.pop(context, _shoppingList);
+                context
+                    .read<ShoppingListProvider>()
+                    .updateShoppingList(_tempShoppingList);
+                Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFCBD6AB),
                 minimumSize: const Size(double.infinity, 50),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                    borderRadius: BorderRadius.circular(12)),
               ),
               child: const Text('닫기',
                   style: TextStyle(
@@ -158,8 +152,8 @@ class _ShoppingListModalState extends State<ShoppingListModal> {
             controller: _textController,
             focusNode: _focusNode,
             autofocus: true,
-            decoration:
-            const InputDecoration(isDense: true, border: InputBorder.none),
+            decoration: const InputDecoration(
+                isDense: true, border: InputBorder.none),
             onSubmitted: (_) => _updateItem(item),
           )
               : GestureDetector(
@@ -167,14 +161,10 @@ class _ShoppingListModalState extends State<ShoppingListModal> {
               setState(() {
                 _editingId = item.id;
                 _textController.text = item.name;
+                _focusNode.requestFocus();
               });
             },
-            child: Text(
-              item.name,
-              style: TextStyle(
-                fontSize: 16,
-              ),
-            ),
+            child: Text(item.name, style: const TextStyle(fontSize: 16)),
           ),
         ),
       ],
@@ -182,11 +172,11 @@ class _ShoppingListModalState extends State<ShoppingListModal> {
   }
 
   Widget _buildAddItemTile() {
-    bool isAdding = _editingId == -1; // -1을 '새 항목 추가 중' 상태로 사용
+    bool isAdding = _editingId == -1;
 
     return Row(
       children: [
-        const SizedBox(width: 12), // 체크박스 자리 비우기
+        const SizedBox(width: 12),
         Icon(Icons.add, color: isAdding ? Colors.green : Colors.grey),
         const SizedBox(width: 12),
         Expanded(
@@ -196,10 +186,9 @@ class _ShoppingListModalState extends State<ShoppingListModal> {
             focusNode: _focusNode,
             autofocus: true,
             decoration: const InputDecoration(
-              hintText: '',
-              isDense: true,
-              border: InputBorder.none,
-            ),
+                hintText: '새 항목 추가',
+                isDense: true,
+                border: InputBorder.none),
             onSubmitted: (_) => _addNewItem(),
           )
               : GestureDetector(
@@ -207,6 +196,7 @@ class _ShoppingListModalState extends State<ShoppingListModal> {
               setState(() {
                 _editingId = -1;
                 _textController.clear();
+                _focusNode.requestFocus();
               });
             },
             child: const Text('추가하기',
