@@ -153,7 +153,13 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       body: SafeArea(
         child: Column(
           children: [
-            const _TopBar(),
+            // ✅ 뒤로가기 동작 연결
+            _TopBar(
+              onBack: () {
+                // 현재 라우트에서 뒤로 갈 수 있으면 pop, 아니면 그냥 무시(혹은 홈으로 이동하도록 커스터마이즈 가능)
+                Navigator.of(context).maybePop();
+              },
+            ),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -204,7 +210,8 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
 /* ========================= WIDGETS ========================= */
 
 class _TopBar extends StatelessWidget {
-  const _TopBar();
+  final VoidCallback? onBack;
+  const _TopBar({this.onBack});
 
   @override
   Widget build(BuildContext context) {
@@ -212,9 +219,14 @@ class _TopBar extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: const [
-          Icon(Icons.arrow_back, color: Color(0xFF003508)),
-          Text(
+        children: [
+          // ✅ 탭 가능하게 변경
+          IconButton(
+            icon: const Icon(Icons.arrow_back, color: Color(0xFF003508)),
+            onPressed: onBack ?? () => Navigator.of(context).maybePop(),
+            tooltip: '뒤로가기',
+          ),
+          const Text(
             '레시피',
             style: TextStyle(
               fontFamily: 'Pretendard Variable',
@@ -223,7 +235,7 @@ class _TopBar extends StatelessWidget {
               color: Color(0xFF003508),
             ),
           ),
-          Icon(Icons.notifications_none, color: Color(0xFF003508)),
+          const Icon(Icons.notifications_none, color: Color(0xFF003508)),
         ],
       ),
     );
