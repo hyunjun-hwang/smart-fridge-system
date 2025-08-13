@@ -7,8 +7,8 @@ import 'package:smart_fridge_system/providers/daily_nutrition_provider.dart';
 import 'package:smart_fridge_system/providers/ndata/foodn_item.dart';
 import 'package:smart_fridge_system/ui/pages/nutrition/record_entry_screen.dart';
 import 'package:smart_fridge_system/ui/pages/nutrition/addfood_screen.dart';
-import 'package:smart_fridge_system/ui/pages/nutrition/recipe_picker_main_page.dart';
 import 'package:smart_fridge_system/ui/pages/recipe/recipe_main_page.dart';
+
 class SearchFoodScreen extends StatefulWidget {
   final String mealType;
   final DateTime date;
@@ -24,20 +24,32 @@ class SearchFoodScreen extends StatefulWidget {
 }
 
 class _SearchFoodScreenState extends State<SearchFoodScreen> {
-  // Colors
+  // ---------- Colors ----------
   static const Color _primary = Color(0xFF003508);
   static const Color _chipSel = Color(0xFFD5E8C6);
 
+  // ---------- Tabs ----------
   int selectedIndex = 0;
   final List<String> filters = ['검색', '즐겨찾기', '내 음식', '냉장고'];
   final TextEditingController _searchController = TextEditingController();
 
+  // ---------- Data ----------
   List<FoodItemn> recentSearches = [];
   List<FoodItemn> myFoods = [];
   List<FoodItemn> favoriteItems = [];
   List<FoodItemn> fridgeItems = [];
 
+  // ---------- Loading / Pagination ----------
   bool _isLoading = false;
+  final int _pageSize = 100; // API가 보통 허용하는 최대
+  int _pageNo = 1;
+  bool _hasMore = true;
+  bool _isLoadingMore = false;
+  String _currentQuery = '';
+
+  // ---------- API key (encoded) ----------
+  static const String _serviceKeyEncoding =
+      'aC9p2FWLKdtxRQI%2FqYrTTCIl9LwAHXOl1ZJ3hcon7nFhVsWWxCck2f03W%2BMCrNj1b8F3wJSUzouE7pYGqHKRfQ%3D%3D';
 
   @override
   void initState() {
@@ -115,95 +127,10 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
     return score;
   }
 
-  // ----------------------------------------
-  // 식품안전나라 영양DB 호출
-  // ----------------------------------------
-  Future<void> fetchFoodInfo(String keyword) async {
-    final kw = keyword.trim();
-    if (kw.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('검색어를 입력하세요.')),
-      );
-      return;
-    }
-
-    if (mounted) setState(() => _isLoading = true);
-
-    const String serviceKeyEncoding =
-        'aC9p2FWLKdtxRQI%2FqYrTTCIl9LwAHXOl1ZJ3hcon7nFhVsWWxCck2f03W%2BMCrNj1b8F3wJSUzouE7pYGqHKRfQ%3D%3D';
-
-    final String q = Uri.encodeQueryComponent(kw);
-    final Uri requestUrl = Uri.parse(
-      'https://apis.data.go.kr/1471000/FoodNtrCpntDbInfo02/getFoodNtrCpntDbInq02'
-          '?serviceKey=$serviceKeyEncoding&pageNo=1&numOfRows=20&type=json&FOOD_NM_KR=$q',
-    );
-
-    Map<String, dynamic>? data;
-    http.Response? lastRes;
-
-    try {
-      final res = await http
-          .get(
-        requestUrl,
-        headers: {
-          'Accept': 'application/json',
-          'Cache-Control': 'no-cache',
-        },
-      )
-          .timeout(const Duration(seconds: 12));
-      lastRes = res;
-
-      if (res.statusCode == 200) {
-        final decoded = jsonDecode(utf8.decode(res.bodyBytes));
-        if (decoded is Map<String, dynamic>) {
-          final resultCode = decoded['header']?['resultCode']?.toString();
-          if (resultCode == '00') {
-            data = decoded;
-          }
-        }
-      }
-    } catch (_) {
-      // 네트워크/타임아웃/파싱 에러는 아래 공통 처리
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-
-    if (data == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('API 호출 실패 (코드: ${lastRes?.statusCode ?? 'N/A'})')),
-      );
-      return;
-    }
-
-    final itemsData = data['body']?['items'];
-    if (itemsData == null) {
-      if (!mounted) return;
-      setState(() => recentSearches = []);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('검색 결과가 없습니다.')),
-      );
-      return;
-    }
-
-    final List parsedRaw = itemsData is List ? itemsData : [itemsData];
-
-    final parsed = <FoodItemn>[];
-    for (final e in parsedRaw) {
-      try {
-        if (e is Map) {
-          final item = e.containsKey('item') ? e['item'] : e;
-          if (item is Map) {
-            parsed.add(FoodItemn.fromApiJson(Map<String, dynamic>.from(item)));
-          }
-        }
-      } catch (_) {}
-    }
-
-    // 정렬: 일반식품 우선 + 관련도
-    parsed.sort((a, b) {
-      final relA = _relevanceScore(a.name, kw);
-      final relB = _relevanceScore(b.name, kw);
+  void _sortFoods(List<FoodItemn> list, String query) {
+    list.sort((a, b) {
+      final relA = _relevanceScore(a.name, query);
+      final relB = _relevanceScore(b.name, query);
 
       final genA = _genericPreferenceScore(a.name);
       final genB = _genericPreferenceScore(b.name);
@@ -221,12 +148,154 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
 
       return a.calories.compareTo(b.calories);
     });
+  }
 
-    if (!mounted) return;
-    setState(() {
-      recentSearches = parsed;
-      selectedIndex = 0; // 검색 탭 유지
-    });
+  // ----------------------------------------
+  // 한 페이지 호출 (null-safe 맵 접근으로 수정)
+  // ----------------------------------------
+  Future<List<FoodItemn>> _fetchPage(String keyword, int pageNo) async {
+    final String q = Uri.encodeQueryComponent(keyword.trim());
+    final Uri requestUrl = Uri.parse(
+      'https://apis.data.go.kr/1471000/FoodNtrCpntDbInfo02/getFoodNtrCpntDbInq02'
+          '?serviceKey=$_serviceKeyEncoding'
+          '&pageNo=$pageNo'
+          '&numOfRows=$_pageSize'
+          '&type=json'
+          '&FOOD_NM_KR=$q',
+    );
+
+    final res = await http
+        .get(requestUrl, headers: {'Accept': 'application/json'})
+        .timeout(const Duration(seconds: 12));
+
+    if (res.statusCode != 200) {
+      throw Exception('HTTP ${res.statusCode}');
+    }
+
+    final decoded = jsonDecode(utf8.decode(res.bodyBytes));
+
+    // --- 여기 수정: ?[] 제거, 안전한 맵 접근 ---
+    bool okCode = false;
+    Map<String, dynamic>? bodyMap;
+
+    if (decoded is Map<String, dynamic>) {
+      final header = decoded['header'];
+      if (header is Map) {
+        final rc = header['resultCode'];
+        okCode = rc?.toString() == '00';
+      }
+      final body = decoded['body'];
+      if (body is Map<String, dynamic>) {
+        bodyMap = body;
+      }
+    }
+
+    if (!okCode) {
+      throw Exception('API resultCode != 00');
+    }
+
+    final dynamic itemsData = bodyMap?['items'];
+    final List raw = itemsData == null
+        ? const []
+        : (itemsData is List ? itemsData : [itemsData]);
+
+    final parsed = <FoodItemn>[];
+    for (final e in raw) {
+      try {
+        if (e is Map) {
+          final item = e.containsKey('item') ? e['item'] : e;
+          if (item is Map) {
+            parsed.add(FoodItemn.fromApiJson(Map<String, dynamic>.from(item)));
+          }
+        }
+      } catch (_) {}
+    }
+    return parsed;
+  }
+
+  // ----------------------------------------
+  // 최초 검색(리셋)
+  // ----------------------------------------
+  Future<void> fetchFoodInfo(String keyword) async {
+    final kw = keyword.trim();
+    if (kw.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('검색어를 입력하세요.')),
+      );
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _currentQuery = kw;
+        _pageNo = 1;
+        _hasMore = true;
+        recentSearches = [];
+      });
+    }
+
+    try {
+      final first = await _fetchPage(kw, 1);
+      if (!mounted) return;
+
+      // 정렬 + 중복 제거
+      final seen = <String>{};
+      final merged = <FoodItemn>[];
+      for (final f in first) {
+        if (seen.add(f.name)) merged.add(f);
+      }
+      _sortFoods(merged, kw);
+
+      setState(() {
+        recentSearches = merged;
+        _hasMore = first.length >= _pageSize;
+        _isLoading = false;
+        selectedIndex = 0; // 검색 탭 유지
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('API 호출 실패: $e')),
+      );
+    }
+  }
+
+  // ----------------------------------------
+  // 더 불러오기
+  // ----------------------------------------
+  Future<void> _loadMore() async {
+    if (_isLoadingMore || !_hasMore || _currentQuery.isEmpty) return;
+
+    setState(() => _isLoadingMore = true);
+    try {
+      final nextPage = _pageNo + 1;
+      final more = await _fetchPage(_currentQuery, nextPage);
+      if (!mounted) return;
+
+      // 합치기 + 중복 제거 + 정렬
+      final seen = <String>{for (final f in recentSearches) f.name};
+      final added = <FoodItemn>[];
+      for (final f in more) {
+        if (seen.add(f.name)) added.add(f);
+      }
+      final merged = [...recentSearches, ...added];
+      _sortFoods(merged, _currentQuery);
+
+      setState(() {
+        recentSearches = merged;
+        _pageNo = nextPage;
+        _hasMore = more.length >= _pageSize;
+        _isLoadingMore = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoadingMore = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('더 불러오기 실패: $e')),
+      );
+    }
   }
 
   // ----------------------------------------
@@ -350,10 +419,7 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
                     ],
                   ),
 
-                  const SizedBox(height: 8),
-                  _infoRow('총 탄수화물', '${totCarb.toStringAsFixed(1)} g'),
-                  _infoRow('총 단백질', '${totPro.toStringAsFixed(1)} g'),
-                  _infoRow('총 지방', '${totFat.toStringAsFixed(1)} g'),
+
 
                   const SizedBox(height: 16),
                   SizedBox(
@@ -528,9 +594,7 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
                           MaterialPageRoute(builder: (_) => const AddFoodScreen()),
                         );
                         if (newFood != null) {
-                          setState(() {
-                            myFoods.add(newFood);
-                          });
+                          setState(() => myFoods.add(newFood));
                         }
                       },
                       style: ElevatedButton.styleFrom(
@@ -579,7 +643,14 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
                 ? const Center(child: CircularProgressIndicator(color: _primary))
                 : Builder(
               builder: (_) {
-                if (selectedIndex == 0) return _buildFoodList(recentSearches);
+                if (selectedIndex == 0) {
+                  return _buildFoodList(
+                    recentSearches,
+                    showLoadMore: _hasMore,
+                    onLoadMore: _loadMore,
+                    loadingMore: _isLoadingMore,
+                  );
+                }
                 if (selectedIndex == 1) return _buildFoodList(favoriteItems);
                 if (selectedIndex == 2) return _buildFoodList(myFoods);
                 if (selectedIndex == 3) return _buildFoodList(fridgeItems);
@@ -592,17 +663,48 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
     );
   }
 
-  Widget _buildFoodList(List<FoodItemn> items) {
+  // 리스트 + "더 보기"
+  Widget _buildFoodList(
+      List<FoodItemn> items, {
+        bool showLoadMore = false,
+        VoidCallback? onLoadMore,
+        bool loadingMore = false,
+      }) {
     if (items.isEmpty) {
       return const Center(child: Text('표시할 항목이 없습니다.'));
     }
 
+    final extra = showLoadMore ? 1 : 0;
+
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: items.length,
+      itemCount: items.length + extra,
       itemBuilder: (context, index) {
+        // 마지막 셀: 더 보기
+        if (showLoadMore && index == items.length) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Center(
+              child: loadingMore
+                  ? const CircularProgressIndicator(color: _primary)
+                  : ElevatedButton(
+                onPressed: onLoadMore,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('더 보기'),
+              ),
+            ),
+          );
+        }
+
         final item = items[index];
         final isFavorite = favoriteItems.any((f) => f.name == item.name);
+
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
@@ -639,7 +741,7 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
                 });
               },
             ),
-            onTap: () => _openFoodSheet(item), // ← 상세 시트 띄움
+            onTap: () => _openFoodSheet(item),
           ),
         );
       },
@@ -658,5 +760,3 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
     ),
   );
 }
-
-
