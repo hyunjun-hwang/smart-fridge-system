@@ -13,7 +13,20 @@
           "package_name": "com.example.smart_fridge_system"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "963527481049-dlqpssr35nee2fkskqcqqhjtopojd7vq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.smart_fridge_system",
+            "certificate_hash": "08cb8628c609d9b79609ab60b2a8aee543f6ac94"
+          }
+        },
+        {
+          "client_id": "963527481049-u733tuin1lbgr3mmed6ajrhueubqacle.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBhBz8AH4Ib5cHSzE0dBUvrhbBSC-5fg4Q"
@@ -21,7 +34,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "963527481049-u733tuin1lbgr3mmed6ajrhueubqacle.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "963527481049-5tfkh5l116dqehatpfrfr40mfqhimoak.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.untitled1"
+              }
+            }
+          ]
         }
       }
     }
