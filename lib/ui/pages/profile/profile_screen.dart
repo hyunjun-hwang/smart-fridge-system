@@ -1,23 +1,22 @@
+import 'dart:io'; // ⭐️ FileImage를 사용하기 위해 추가
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Firebase Auth 임포트
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:smart_fridge_system/constants/app_colors.dart'; // ⭐️ AppColors import
 import 'package:smart_fridge_system/ui/pages/profile/profile_detail_screen.dart';
-import 'package:smart_fridge_system/providers/profile_provider.dart';
+// import 'package:smart_fridge_system/providers/profile_provider.dart'; // 이 파일에서는 사용하지 않으므로 주석 처리 또는 삭제 가능
 import 'package:smart_fridge_system/providers/user_provider.dart';
-import 'package:smart_fridge_system/ui/pages/auth/LoginPage.dart'; // LoginPage 임포트
+import 'package:smart_fridge_system/ui/pages/auth/LoginPage.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => ProfileProvider()),
-        ChangeNotifierProvider(create: (_) => UserProvider()),
-      ],
-      child: const _ProfileContent(),
-    );
+    // ⭐️ 중요: UserProvider는 앱의 상위 위젯(예: main.dart의 MaterialApp 위)에서 제공되어야 합니다.
+    // 여기서 MultiProvider로 UserProvider를 새로 생성하면 다른 화면과 상태가 공유되지 않습니다.
+    // 이 화면에서는 이미 상위에서 제공된 UserProvider를 사용한다고 가정합니다.
+    return const _ProfileContent();
   }
 }
 
@@ -31,31 +30,23 @@ class _ProfileContent extends StatefulWidget {
 class _ProfileContentState extends State<_ProfileContent> {
   bool _notificationsEnabled = true;
 
-  // ## 1. 로그아웃 다이얼로그를 보여주는 함수 추가
+  // --- 로그아웃 관련 함수 (기존과 동일) ---
   Future<void> _showLogoutDialog() async {
     return showDialog<void>(
       context: context,
-      barrierDismissible: false, // 다이얼로그 바깥을 터치해도 닫히지 않음
+      barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('로그아웃'),
-          content: const SingleChildScrollView(
-            child: ListBody(
-              children: <Widget>[
-                Text('로그아웃 하시겠습니까?'),
-              ],
-            ),
-          ),
+          content: const Text('로그아웃 하시겠습니까?'),
           actions: <Widget>[
             TextButton(
-              child: const Text('아니오'),
-              onPressed: () {
-                Navigator.of(context).pop(); // 다이얼로그 닫기
-              },
+              child: const Text('아니오', style: TextStyle(color: AppColors.primary)),
+              onPressed: () => Navigator.of(context).pop(),
             ),
             TextButton(
-              child: const Text('네'),
-              onPressed: _signOut, // 로그아웃 함수 호출
+              child: const Text('네', style: TextStyle(color: AppColors.primary)),
+              onPressed: _signOut,
             ),
           ],
         );
@@ -63,16 +54,10 @@ class _ProfileContentState extends State<_ProfileContent> {
     );
   }
 
-  // ## 2. Firebase 로그아웃 및 화면 이동을 처리하는 함수 추가
   Future<void> _signOut() async {
     try {
-      // 먼저 다이얼로그를 닫습니다.
-      Navigator.of(context).pop();
-
-      // Firebase에서 로그아웃합니다.
+      Navigator.of(context, rootNavigator: true).pop(); // 다이얼로그 닫기
       await FirebaseAuth.instance.signOut();
-
-      // 로그인 페이지로 이동하고, 이전의 모든 페이지 기록을 삭제합니다.
       if (mounted) {
         Navigator.pushAndRemoveUntil(
           context,
@@ -82,7 +67,6 @@ class _ProfileContentState extends State<_ProfileContent> {
       }
     } catch (e) {
       debugPrint("로그아웃 에러: $e");
-      // 에러 발생 시 사용자에게 알림 (선택 사항)
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('로그아웃 중 오류가 발생했습니다.')),
@@ -93,95 +77,109 @@ class _ProfileContentState extends State<_ProfileContent> {
 
   @override
   Widget build(BuildContext context) {
-    final user = Provider.of<UserProvider>(context);
+    // ⭐️ Consumer를 사용해 UserProvider의 변경사항을 실시간으로 감지
+    return Consumer<UserProvider>(
+      builder: (context, userProvider, child) {
+        // ⭐️ 프로필 이미지 표시 로직
+        ImageProvider<Object> profileImage;
+        final imagePath = userProvider.profileImagePath;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFDFDFD),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          '프로필',
-          style: TextStyle(
-            color: Color(0xFF003508),
-            fontWeight: FontWeight.bold,
+        if (imagePath != null && imagePath.isNotEmpty) {
+          profileImage = FileImage(File(imagePath));
+        } else {
+          // 기본 이미지가 프로젝트에 포함되어 있어야 합니다. (예: assets/placeholder.png)
+          profileImage = const AssetImage('assets/placeholder.png');
+        }
+
+        return Scaffold(
+          // ⭐️ AppColors 적용
+          backgroundColor: AppColors.white,
+          appBar: AppBar(
+            backgroundColor: AppColors.white,
+            elevation: 0,
+            title: const Text(
+              '프로필',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            centerTitle: true,
           ),
-        ),
-        centerTitle: true,
-      ),
-      body: Column(
-        children: [
-          const SizedBox(height: 24),
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ChangeNotifierProvider.value(
-                    value: user,
-                    child: const ProfileDetailScreen(),
-                  ),
-                ),
-              );
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Row(
-                children: [
-                  const CircleAvatar(
-                    radius: 32,
-                    backgroundImage: NetworkImage(
-                      'https://randomuser.me/api/portraits/men/1.jpg',
+          body: userProvider.isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
+            children: [
+              const SizedBox(height: 24),
+              GestureDetector(
+                onTap: () {
+                  // ⭐️ UserProvider는 이미 상위에서 제공되므로, .value 생성자가 필요 없습니다.
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ProfileDetailScreen(),
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Row(
                     children: [
-                      Text(
-                        user.name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                      // ⭐️ 프로필 이미지 CircleAvatar 수정
+                      CircleAvatar(
+                        radius: 32,
+                        backgroundImage: profileImage,
+                        backgroundColor: Colors.grey.shade200,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        user.email,
-                        style: const TextStyle(color: Colors.grey),
+                      const SizedBox(width: 16),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // ⭐️ Provider에서 이름과 이메일 가져오기
+                          Text(
+                            userProvider.name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            userProvider.email,
+                            style: const TextStyle(color: Colors.grey),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
+                ),
               ),
-            ),
+              const SizedBox(height: 24),
+              const Divider(height: 1),
+              SwitchListTile(
+                title: const Text('알림'),
+                secondary: const Icon(Icons.notifications_none, color: AppColors.primary),
+                value: _notificationsEnabled,
+                onChanged: (value) {
+                  setState(() {
+                    _notificationsEnabled = value;
+                  });
+                },
+                activeColor: AppColors.accent,
+              ),
+              _buildSettingTile(Icons.devices_other, '기기 연결'),
+              _buildSettingTile(Icons.logout, '로그아웃', onTap: _showLogoutDialog),
+              _buildSettingTile(Icons.delete_outline, '계정 탈퇴'),
+            ],
           ),
-          const SizedBox(height: 24),
-          const Divider(height: 1),
-          SwitchListTile(
-            title: const Text('알림'),
-            secondary: const Icon(Icons.notifications_none, color: Color(0xFF003508)),
-            value: _notificationsEnabled,
-            onChanged: (value) {
-              setState(() {
-                _notificationsEnabled = value;
-              });
-            },
-            activeColor: const Color(0xFFC7D8A4),
-          ),
-          _buildSettingTile(Icons.devices_other, '기기 연결'),
-          // ## 3. '로그아웃' 타일에 _showLogoutDialog 함수 연결
-          _buildSettingTile(Icons.logout, '로그아웃', onTap: _showLogoutDialog),
-          _buildSettingTile(Icons.delete_outline, '계정 탈퇴'),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  // ## 4. _buildSettingTile 함수가 커스텀 onTap 함수를 받을 수 있도록 수정
   Widget _buildSettingTile(IconData icon, String title, {VoidCallback? onTap}) {
     return ListTile(
-      leading: Icon(icon, color: const Color(0xFF003508)),
+      leading: Icon(icon, color: AppColors.primary),
       title: Text(title),
       trailing: const Icon(Icons.chevron_right),
       onTap: onTap ?? () {
