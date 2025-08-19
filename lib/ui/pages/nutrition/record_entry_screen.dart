@@ -36,19 +36,20 @@ class _RecordEntryScreenState extends State<RecordEntryScreen> {
     foods = List.from(existing);
   }
 
-  /// ✅ [수정] 단순 뒤로가기 함수
+  /// 단순 뒤로가기
   void _goBack() {
     Navigator.of(context).pop();
   }
 
-  /// ✅ [수정] 시스템 뒤로가기 처리
+  /// 시스템 뒤로가기 처리
   Future<bool> _onWillPop() async {
     _goBack();
-    return false; // 기본 뒤로가기 동작을 막고, 직접 처리했음을 알림
+    return false; // 기본 뒤로가기 동작을 막고, 직접 처리
   }
 
   @override
   Widget build(BuildContext context) {
+    // 합계(✔ 1회 제공량 기준: 각 항목의 per-serving 값 × count(회))
     final totalCalories =
     foods.fold<double>(0, (sum, f) => sum + (f.calories * f.count));
     final totalCarbs =
@@ -70,7 +71,7 @@ class _RecordEntryScreenState extends State<RecordEntryScreen> {
           title: Text('${widget.mealType} 기록하기'),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
-            onPressed: _goBack, // [수정] 뒤로가기 함수 호출
+            onPressed: _goBack,
           ),
         ),
         body: Column(
@@ -125,8 +126,7 @@ class _RecordEntryScreenState extends State<RecordEntryScreen> {
                         ),
                         const TextSpan(
                             text: 'kcal',
-                            style:
-                            TextStyle(fontSize: 16, color: Colors.black)),
+                            style: TextStyle(fontSize: 16, color: Colors.black)),
                         TextSpan(
                           text: ' / ${targetCalories.toStringAsFixed(0)} kcal',
                           style: const TextStyle(fontSize: 16, color: Colors.grey),
@@ -148,6 +148,13 @@ class _RecordEntryScreenState extends State<RecordEntryScreen> {
                 itemCount: foods.length,
                 itemBuilder: (_, index) {
                   final food = foods[index];
+
+                  // ✔ 1회 제공량 기준 표기
+                  final servingG = food.amount; // amount = 1회 제공량(g)
+                  final perServingKcal = food.calories;
+                  final totalG = (servingG * food.count);
+                  final totalKcal = (perServingKcal * food.count);
+
                   return Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
@@ -160,8 +167,11 @@ class _RecordEntryScreenState extends State<RecordEntryScreen> {
                           size: 40, color: Colors.grey),
                       title: Text(food.name, style: TextStyle(color: _textColor)),
                       subtitle: Text(
-                        '${(food.amount * food.count).toStringAsFixed(1)}g '
-                            '${(food.calories * food.count).toStringAsFixed(1)}kcal',
+                        '1회 제공량 ${servingG.toStringAsFixed(0)}g • '
+                            '${perServingKcal.toStringAsFixed(1)}kcal/회  |  '
+                            '총 ${totalG.toStringAsFixed(0)}g • ${totalKcal.toStringAsFixed(1)}kcal',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -183,9 +193,9 @@ class _RecordEntryScreenState extends State<RecordEntryScreen> {
                               });
                             },
                           ),
-                          Text('${food.count}',
-                              style:
-                              const TextStyle(fontWeight: FontWeight.bold)),
+                          // ✔ "회" 단위로 표시
+                          Text('${food.count}회',
+                              style: const TextStyle(fontWeight: FontWeight.bold)),
                           IconButton(
                             icon: Icon(Icons.add_circle_outline, color: _textColor),
                             onPressed: () {
@@ -238,8 +248,8 @@ class _RecordEntryScreenState extends State<RecordEntryScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _borderColor,
                     foregroundColor: _textColor,
-                    shape:
-                    RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
                   ),
                   child: const Text('음식 추가', style: TextStyle(fontSize: 16)),
                 ),
@@ -299,7 +309,25 @@ class _RecordEntryScreenState extends State<RecordEntryScreen> {
                           fontWeight: FontWeight.bold,
                           color: _textColor)),
                   const SizedBox(height: 12),
-                  _infoRow('칼로리', '${food.calories} kcal'),
+
+                  // ✔ 기준(1회 제공량) 안내
+                  _infoRow('기준', '1회 제공량 ${food.amount.toStringAsFixed(0)} g'),
+                  const SizedBox(height: 8),
+
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      '영양성분 (1회 제공량당)',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: _textColor,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  _infoRow('칼로리', '${food.calories.toStringAsFixed(1)} kcal'),
                   _infoRow('탄수화물', '${food.carbohydrates.toStringAsFixed(1)} g'),
                   _infoRow('단백질', '${food.protein.toStringAsFixed(1)} g'),
                   _infoRow('지방', '${food.fat.toStringAsFixed(1)} g'),

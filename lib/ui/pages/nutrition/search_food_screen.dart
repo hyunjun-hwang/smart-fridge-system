@@ -9,6 +9,10 @@ import 'package:smart_fridge_system/ui/pages/nutrition/record_entry_screen.dart'
 import 'package:smart_fridge_system/ui/pages/nutrition/addfood_screen.dart';
 import 'package:smart_fridge_system/ui/pages/recipe/recipe_main_page.dart';
 
+// ✅ 냉장고(재고) 연동 추가
+import 'package:smart_fridge_system/providers/food_provider.dart';
+import 'package:smart_fridge_system/data/models/food_item.dart';
+
 class SearchFoodScreen extends StatefulWidget {
   final String mealType;
   final DateTime date;
@@ -37,7 +41,9 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
   List<FoodItemn> recentSearches = [];
   List<FoodItemn> myFoods = [];
   List<FoodItemn> favoriteItems = [];
-  List<FoodItemn> fridgeItems = [];
+
+  // 냉장고 탭 최초 진입 시 한 번만 fetch
+  bool _fridgeInitOnce = false;
 
   // ---------- Loading / Pagination ----------
   bool _isLoading = false;
@@ -55,17 +61,6 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
   void initState() {
     super.initState();
     recentSearches = [];
-    fridgeItems = [
-      FoodItemn(
-        name: '우유',
-        calories: 42,
-        carbohydrates: 5.0,
-        protein: 3.4,
-        fat: 1.0,
-        amount: 100,
-        count: 1.0,
-      ),
-    ];
   }
 
   // ------------------------
@@ -151,7 +146,7 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
   }
 
   // ----------------------------------------
-  // 한 페이지 호출 (null-safe 맵 접근으로 수정)
+  // 한 페이지 호출 (null-safe 맵 접근)
   // ----------------------------------------
   Future<List<FoodItemn>> _fetchPage(String keyword, int pageNo) async {
     final String q = Uri.encodeQueryComponent(keyword.trim());
@@ -174,7 +169,6 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
 
     final decoded = jsonDecode(utf8.decode(res.bodyBytes));
 
-    // --- 여기 수정: ?[] 제거, 안전한 맵 접근 ---
     bool okCode = false;
     Map<String, dynamic>? bodyMap;
 
@@ -332,9 +326,6 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
         return StatefulBuilder(
           builder: (context, setState) {
             final totKcal = (base.calories * count);
-            final totCarb = (base.carbohydrates * count);
-            final totPro  = (base.protein * count);
-            final totFat  = (base.fat * count);
 
             return Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
@@ -358,7 +349,6 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
                     style: const TextStyle(
                         fontWeight: FontWeight.w800, fontSize: 18, color: _primary),
                   ),
-                  const SizedBox(height: 4),
                   const SizedBox(height: 8),
 
                   const Text('영양성분', style: TextStyle(
@@ -419,8 +409,6 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
                     ],
                   ),
 
-
-
                   const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
@@ -449,6 +437,80 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
     );
   }
 
+  // 냉장고 아이템 선택 시 작업 시트 (검색 or 바로 추가)
+  void _openFridgeActionSheet(FoodItem fi) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(fi.name,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800, fontSize: 18, color: _primary)),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        _searchController.text = fi.name;
+                        await fetchFoodInfo(fi.name); // 검색 실행 + 검색 탭 유지
+                        setState(() => selectedIndex = 0); // 혹시 모를 탭 강제
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: _chipSel),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('영양 검색해서 추가'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        // 영양정보가 없는 상태로 바로 추가 (0 기준)
+                        final dummy = FoodItemn(
+                          name: fi.name,
+                          calories: 0,
+                          carbohydrates: 0,
+                          protein: 0,
+                          fat: 0,
+                          amount: 100,
+                          count: 1.0,
+                        );
+                        _openFoodSheet(dummy);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('바로 추가(영양정보 없음)'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                '※ 냉장고 재고는 영양정보가 없을 수 있어요. 정확한 기록을 원하면 영양 검색을 사용하세요.',
+                style: TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _qtyBtn(IconData icon, VoidCallback onTap) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 6),
     child: Ink(
@@ -470,6 +532,16 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ‘냉장고’ 탭으로 전환 시 1회만 fetch
+    if (selectedIndex == 3 && !_fridgeInitOnce) {
+      _fridgeInitOnce = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          context.read<FoodProvider>().fetchFoodItems();
+        }
+      });
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF2F2F7),
       appBar: AppBar(
@@ -653,7 +725,24 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
                 }
                 if (selectedIndex == 1) return _buildFoodList(favoriteItems);
                 if (selectedIndex == 2) return _buildFoodList(myFoods);
-                if (selectedIndex == 3) return _buildFoodList(fridgeItems);
+                if (selectedIndex == 3) {
+                  // ✅ 냉장고 탭: FoodProvider 데이터 표시
+                  return Consumer<FoodProvider>(
+                    builder: (context, fp, _) {
+                      if (fp.isLoading && fp.foodItems.isEmpty) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (fp.error != null) {
+                        return Center(
+                            child: Text('냉장고 데이터를 불러오지 못했습니다: ${fp.error}'));
+                      }
+                      if (fp.foodItems.isEmpty) {
+                        return const Center(child: Text('냉장고에 음식이 없어요!'));
+                      }
+                      return _buildFridgeList(fp.foodItems);
+                    },
+                  );
+                }
                 return const Center(child: Text('항목이 없습니다.'));
               },
             ),
@@ -663,7 +752,7 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
     );
   }
 
-  // 리스트 + "더 보기"
+  // 검색/즐겨찾기/내 음식 공용 리스트 + "더 보기"
   Widget _buildFoodList(
       List<FoodItemn> items, {
         bool showLoadMore = false,
@@ -746,6 +835,58 @@ class _SearchFoodScreenState extends State<SearchFoodScreen> {
         );
       },
     );
+  }
+
+  // ✅ 냉장고(재고) 전용 리스트: FoodItem 기반
+  Widget _buildFridgeList(List<FoodItem> items) {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final fi = items[index];
+        final sub = StringBuffer();
+        // 보조 정보 구성 (보유 수량 / 보관 / 유통기한)
+        sub.write('수량 ${fi.quantity}');
+        sub.write(' • ${fi.storage.displayName}');
+        sub.write(' • 유통기한 ${_fmtDate(fi.expiryDate)}');
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _chipSel, width: 2),
+            boxShadow: const [
+              BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+            ],
+          ),
+          child: ListTile(
+            contentPadding: const EdgeInsets.all(12),
+            title: Text(
+              fi.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text(
+              sub.toString(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _openFridgeActionSheet(fi),
+          ),
+        );
+      },
+    );
+  }
+
+  String _fmtDate(DateTime d) {
+    // yyyy-MM-dd
+    final y = d.year.toString().padLeft(4, '0');
+    final m = d.month.toString().padLeft(2, '0');
+    final day = d.day.toString().padLeft(2, '0');
+    return '$y-$m-$day';
   }
 
   // 공용 간단 Row

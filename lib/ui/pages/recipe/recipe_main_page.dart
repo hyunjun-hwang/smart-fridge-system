@@ -398,7 +398,7 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
                 controller: _searchController,
                 decoration: InputDecoration(
                   contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                  hintText: '레시피명을 검색하세요. (예: 김치볶음밥, 된장찌개)',
+                  hintText: '레시피명을 검색하세요. (예 볶음밥)' ,
                   hintStyle: const TextStyle(
                     fontFamily: 'Pretendard Variable',
                     fontSize: 14,
