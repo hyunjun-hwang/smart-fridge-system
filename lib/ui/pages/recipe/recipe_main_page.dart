@@ -10,9 +10,10 @@ import 'recipe_detail_page.dart';
 // ✅ 결과 전달 타입(레시피 선택 시 반환)
 import 'package:smart_fridge_system/providers/ndata/foodn_item.dart';
 
-// ✅ 냉장고 재고 이름 읽기 위한 Provider (UI 변경 없음)
+// ✅ 냉장고 재고 Provider
 import 'package:provider/provider.dart';
 import 'package:smart_fridge_system/providers/food_provider.dart';
+import 'package:smart_fridge_system/data/models/food_item.dart'; // FoodItem 타입
 
 class RecipeMainPage extends StatefulWidget {
   final bool pickMode; // false: 보기, true: 상세에서 FoodItemn 선택 후 상위로 반환
@@ -44,13 +45,15 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
   static const String _dataType = 'json';
   static const Duration _netTimeout = Duration(seconds: 20);
 
-  // ---------------- 매칭 유틸 ----------------
-  String _norm(String s) {
+  // ---------------- 문자열 정규화/매칭 유틸 ----------------
+  String _norm(String? s) {
+    if (s == null) return '';
     final noParen = s.replaceAll(RegExp(r'\([^)]*\)'), '');
     return noParen.toLowerCase().replaceAll(RegExp(r'[^a-z0-9\uac00-\ud7a3]'), '');
   }
 
   ({int match, int missing}) _matchScore(Recipe r, Set<String> fridgeNamesNorm) {
+    if (r.ingredients.isEmpty) return (match: 0, missing: 0);
     final tokens = r.ingredients.keys.map(_norm).where((e) => e.isNotEmpty).toList();
     int match = 0;
     for (final tok in tokens) {
@@ -92,7 +95,10 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
     while (true) {
       attempt++;
       try {
-        final res = await http.get(url).timeout(timeout);
+        final res = await http.get(url, headers: {
+          'Accept': 'application/json, text/plain, */*',
+          'User-Agent': 'smart-fridge-app/1.0',
+        }).timeout(timeout);
         return res;
       } on TimeoutException {
         if (attempt > retries) rethrow;
@@ -104,6 +110,67 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
     }
   }
 
+  // ---------------- 응답 형태 감지 ----------------
+  bool _looksLikeHtml(String s) {
+    final t = s.trimLeft();
+    return t.startsWith('<') || t.contains('<script') || t.contains('<html');
+  }
+
+  // ---------------- 레시피 × 냉장고: 최소 유통기한 계산 ----------------
+  /// 레시피가 사용하는 재료 중, 냉장고에 있는 재료들의 '가장 임박한' 유통기한을 구함
+  DateTime? _minExpiryForRecipe(Recipe recipe, List<FoodItem> foods) {
+    DateTime? minExpiry;
+
+    for (final ing in recipe.ingredients.keys) {
+      final ingNorm = _norm(ing);
+      if (ingNorm.isEmpty) continue;
+
+      for (final f in foods) {
+        final fName = _norm(f.name);
+        if (fName.isEmpty) continue;
+
+        final hit = fName.contains(ingNorm) || ingNorm.contains(fName);
+        if (hit) {
+          final d = f.expiryDate; // FoodItem의 expiryDate는 DateTime
+          if (d != null && (minExpiry == null || d.isBefore(minExpiry))) {
+            minExpiry = d;
+          }
+        }
+      }
+    }
+    return minExpiry;
+  }
+
+  /// (초기 추천용) 유통기한 임박 레시피 우선 정렬
+  void _sortByExpiryFirst(FoodProvider? provider) {
+    if (provider == null || recipes.isEmpty) return;
+    final foods = provider.foodItems; // FoodProvider에서 제공
+
+    recipes.sort((a, b) {
+      final ea = _minExpiryForRecipe(a, foods);
+      final eb = _minExpiryForRecipe(b, foods);
+
+      // 1) 유통기한 정보 있는 레시피가 앞으로
+      if (ea == null && eb == null) return 0;
+      if (ea == null) return 1;
+      if (eb == null) return -1;
+
+      // 2) 더 임박한 날짜가 먼저
+      final byExpiry = ea.compareTo(eb);
+      if (byExpiry != 0) return byExpiry;
+
+      // 3) 동률이면 냉장고 매칭 점수로 보조 정렬
+      final namesNorm = provider.fridgeNamesNormalized; // Set<String>
+      final sa = _matchScore(a, namesNorm);
+      final sb = _matchScore(b, namesNorm);
+      final byMatch = sb.match.compareTo(sa.match);
+      if (byMatch != 0) return byMatch;
+
+      // 4) 마지막 타이브레이커: 제목
+      return a.title.compareTo(b.title);
+    });
+  }
+
   // ---------------- 초기 자동 추천 ----------------
   @override
   void initState() {
@@ -112,33 +179,37 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
   }
 
   Future<void> _bootstrapInitialRecipes() async {
-    final names = context.read<FoodProvider?>()?.fridgeNames ?? const <String>[];
+    final fp = context.read<FoodProvider?>();
+    final names = fp?.fridgeNames ?? const <String>[];
     // 냉장고가 비었거나 실패 대비 기본 키워드
     final seeds = (names.isNotEmpty ? names : const ['김치', '계란', '두부']).take(3).toList();
 
     setState(() => _isLoading = true);
     try {
-      final lists = await Future.wait(seeds.map((kw) {
-        // 초기 추천은 한 번에 좀 넉넉히(예: 처음 30개)만 가져와서 보여줌
-        return _fetchRecipesRaw(kw, startIdx: 1, endIdx: 30);
-      })); // 병렬
-      // 제목 기준 중복 제거
+      // ✅ 동시접속 제한 회피: 병렬(Future.wait) → 순차 호출 + 짧은 지연
       final Map<String, Recipe> merged = {};
-      for (final list in lists) {
+      for (final kw in seeds) {
+        final list = await _fetchRecipesRaw(kw, startIdx: 1, endIdx: 30);
         for (final r in list) {
-          merged[r.title] = r;
+          merged[r.title] = r; // 제목 기준 중복 제거
         }
+        await Future.delayed(const Duration(milliseconds: 250));
       }
       recipes = merged.values.toList();
 
-      // 1차: 정렬 옵션 반영
+      // ✅ 0차: 유통기한 임박 순 정렬(초기 추천 전용, 최우선)
+      _sortByExpiryFirst(fp);
+
+      // ✅ 1차: 사용자가 '칼로리 순'을 선택 중이면 보조 정렬
       if (_sortOption == '칼로리 순') {
         recipes.sort((a, b) => a.kcal.compareTo(b.kcal));
-      } else {
+      } else if (fp == null) {
+        // fp가 없으면 제목순으로 한 번 정돈
         recipes.sort((a, b) => a.title.compareTo(b.title));
       }
-      // 2차: 냉장고 매칭 우선 정렬
-      final fridgeNamesNorm = names.map(_norm).where((e) => e.isNotEmpty).toSet();
+
+      // ✅ 2차: 기존 냉장고 매칭 우선 정렬(미세 조정)
+      final fridgeNamesNorm = fp?.fridgeNamesNormalized ?? <String>{};
       _applyFridgeAwareSort(fridgeNamesNorm);
 
       if (mounted) setState(() {});
@@ -176,11 +247,28 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
 
     final res = await _getWithRetry(url, timeout: _netTimeout);
     final bodyStr = utf8.decode(res.bodyBytes);
+
+    // status 200이어도 HTML/스크립트가 올 수 있음 → 방어
+    final contentType = res.headers['content-type'] ?? '';
+    final looksJson = contentType.contains('application/json');
+
     if (res.statusCode != 200) {
       throw Exception('HTTP ${res.statusCode}');
     }
+    if (!looksJson || _looksLikeHtml(bodyStr)) {
+      if (bodyStr.contains('인증키') || bodyStr.contains('현재 접속 중인 인증키')) {
+        throw Exception('공공데이터포털 인증키 동시 접속 제한이 발생했습니다. 잠시 후 다시 시도해주세요.');
+      }
+      throw Exception('서버가 JSON이 아닌 응답을 보냈습니다.');
+    }
 
-    final root = jsonDecode(bodyStr);
+    Map<String, dynamic> root;
+    try {
+      root = jsonDecode(bodyStr) as Map<String, dynamic>;
+    } on FormatException {
+      throw Exception('응답 파싱 실패(비정상 JSON). 잠시 후 다시 시도해주세요.');
+    }
+
     final rows = root['COOKRCP01']?['row'] as List?;
     if (rows == null || rows.isEmpty) return const [];
 
@@ -274,8 +362,8 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
       }
 
       // 2차: 냉장고 매칭 정렬
-      final fridgeNames = context.read<FoodProvider?>()?.fridgeNames ?? const <String>[];
-      final fridgeNamesNorm = fridgeNames.map(_norm).where((e) => e.isNotEmpty).toSet();
+      final fp = context.read<FoodProvider?>();
+      final fridgeNamesNorm = fp?.fridgeNamesNormalized ?? <String>{};
       recipes = merged;
       _applyFridgeAwareSort(fridgeNamesNorm);
 
@@ -321,8 +409,8 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
       }
 
       // 2차: 냉장고 매칭 정렬
-      final fridgeNames = context.read<FoodProvider?>()?.fridgeNames ?? const <String>[];
-      final fridgeNamesNorm = fridgeNames.map(_norm).where((e) => e.isNotEmpty).toSet();
+      final fp = context.read<FoodProvider?>();
+      final fridgeNamesNorm = fp?.fridgeNamesNormalized ?? <String>{};
       recipes = merged;
       _applyFridgeAwareSort(fridgeNamesNorm);
 
@@ -346,19 +434,20 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
     super.dispose();
   }
 
-  // ---------------- UI (그대로 + 하단 "더 보기"만 추가) ----------------
+  // ---------------- UI ----------------
   @override
   Widget build(BuildContext context) {
     // 냉장고 변경 시 자동 재정렬
-    final fridgeNames = context.watch<FoodProvider?>()?.fridgeNames ?? const <String>[];
-    final fridgeNamesNorm = fridgeNames.map(_norm).where((e) => e.isNotEmpty).toSet();
+    final fp = context.watch<FoodProvider?>();
+    final fridgeNamesNorm = fp?.fridgeNamesNormalized ?? <String>{};
 
     // 냉장고 데이터가 늦게 로드돼도 한 번은 자동 추천 실행
-    if (!_didAutoLoad && fridgeNames.isNotEmpty && recipes.isEmpty && !_isLoading) {
+    if (!_didAutoLoad && (fp?.foodItems.isNotEmpty ?? false) && recipes.isEmpty && !_isLoading) {
       _didAutoLoad = true;
       WidgetsBinding.instance.addPostFrameCallback((_) => _bootstrapInitialRecipes());
     }
 
+    // 화면 리빌드 시에도 냉장고 매칭 보정
     _applyFridgeAwareSort(fridgeNamesNorm);
 
     return Scaffold(
@@ -419,7 +508,7 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
             ),
             const SizedBox(height: 12),
 
-            // 정렬 + 검색 버튼
+            // 정렬 + 검색 버튼 (메뉴는 기존 유지)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
@@ -434,8 +523,7 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
                           recipes.sort((a, b) => a.title.compareTo(b.title));
                         }
                       });
-                      final names = context.read<FoodProvider?>()?.fridgeNames ?? const <String>[];
-                      final namesNorm = names.map(_norm).where((e) => e.isNotEmpty).toSet();
+                      final namesNorm = context.read<FoodProvider?>()?.fridgeNamesNormalized ?? <String>{};
                       setState(() => _applyFridgeAwareSort(namesNorm));
                     },
                     itemBuilder: (BuildContext context) => const [
@@ -496,7 +584,6 @@ class _RecipeMainPageState extends State<RecipeMainPage> {
                 itemBuilder: (context, index) {
                   // 마지막 셀: 더 보기
                   final showLoadMore = _currentQuery.isNotEmpty && _hasMore;
-                  final extra = showLoadMore ? 1 : 0;
                   if (showLoadMore && index == recipes.length) {
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 12),
