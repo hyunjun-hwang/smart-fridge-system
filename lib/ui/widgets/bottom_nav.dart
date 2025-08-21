@@ -21,12 +21,12 @@ class BottomNav extends StatefulWidget {
 class _BottomNavState extends State<BottomNav> {
   int _selectedIndex = 0;
 
-  static final List<Widget> _widgetOptions = <Widget>[
-    HomePage(),
-    const FridgePage(),
-    const RecipeMainPage(),
-    const NutritionScreen(),
-    const ProfileScreen(),
+  static const List<Widget> _widgetOptions = <Widget>[
+    MyApp(),
+    FridgePage(),
+    RecipeMainPage(),
+    NutritionScreen(),
+    ProfileScreen(),
   ];
 
   void onItemTapped(int index) {
@@ -64,7 +64,10 @@ class _BottomNavState extends State<BottomNav> {
         ],
       )
           : null,
-      body: _widgetOptions.elementAt(_selectedIndex),
+      body: IndexedStack( // ❗️ 페이지 상태 유지를 위해 IndexedStack으로 변경을 권장합니다.
+        index: _selectedIndex,
+        children: _widgetOptions,
+      ),
       floatingActionButton: _selectedIndex == 1
           ? FloatingActionButton(
         onPressed: _showAddFoodDialog,
@@ -88,21 +91,23 @@ class _BottomNavState extends State<BottomNav> {
             label: '냉장고',
           ),
           BottomNavigationBarItem(
-            icon: Image.asset('assets/images/recipe.png', width: 24, height: 24),
+            icon:
+            Image.asset('assets/images/recipe.png', width: 24, height: 24),
             label: '레시피',
           ),
           BottomNavigationBarItem(
-            icon:
-            Image.asset('assets/images/nutrient.png', width: 24, height: 24),
+            icon: Image.asset('assets/images/nutrient.png',
+                width: 24, height: 24),
             label: '영양소',
           ),
           BottomNavigationBarItem(
-            icon: Image.asset('assets/images/profile.png', width: 24, height: 24),
+            icon:
+            Image.asset('assets/images/profile.png', width: 24, height: 24),
             label: '프로필',
           ),
         ],
         currentIndex: _selectedIndex,
-        onTap: onItemTapped, // 함수 이름 변경 반영
+        onTap: onItemTapped,
         backgroundColor: AppColors.accent,
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.white,

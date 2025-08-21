@@ -25,28 +25,35 @@ class _TemperatureControlModalState extends State<TemperatureControlModal> {
   @override
   void initState() {
     super.initState();
+    // initState에서는 context.read를 사용해야 합니다.
     final provider = context.read<TemperatureProvider>();
     if (widget.isFreezer) {
-      _currentTemp = provider.freezerTemp;
-      _currentHumidity = provider.freezerHumidity;
+      // ✨ 수정된 부분: status 객체를 통해 값에 접근합니다.
+      _currentTemp = provider.freezerStatus.temperature;
+      _currentHumidity = provider.freezerStatus.humidity;
     } else {
-      _currentTemp = provider.fridgeTemp;
-      _currentHumidity = provider.fridgeHumidity;
+      // ✨ 수정된 부분: status 객체를 통해 값에 접근합니다.
+      _currentTemp = provider.fridgeStatus.temperature;
+      _currentHumidity = provider.fridgeStatus.humidity;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // build 메서드에서는 context.watch 또는 context.read를 상황에 맞게 사용합니다.
+    // 여기서는 상태 변경을 UI에 반영할 필요가 없으므로 read를 사용합니다.
     final provider = context.read<TemperatureProvider>();
 
     final title = widget.isFreezer ? '냉동고' : '냉장고';
     final minTemp = widget.isFreezer ? -25.0 : 0.0;
     final maxTemp = widget.isFreezer ? -15.0 : 6.0;
+    // ✨ 수정된 부분: status 객체를 통해 값에 접근합니다.
     final gasStatus =
-    widget.isFreezer ? provider.freezerGasStatus : provider.fridgeGasStatus;
+    widget.isFreezer ? provider.freezerStatus.gasStatus : provider.fridgeStatus.gasStatus;
     final isWarning = gasStatus != '정상';
     final iceMakerMinutes = widget.isFreezer ? 15 : null;
 
+    // 이 부분은 provider에 개별 업데이트 메서드가 다시 추가되었으므로 정상 동작합니다.
     final Function(double) onTempChanged =
     widget.isFreezer ? provider.updateFreezerTemp : provider.updateFridgeTemp;
     final Function(double) onHumidityChanged = widget.isFreezer
