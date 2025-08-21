@@ -1,5 +1,3 @@
-
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -25,7 +23,6 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    // 위젯 빌드 후 음식 데이터 가져오기
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<FoodProvider>(context, listen: false).fetchFoodItems();
     });
@@ -104,8 +101,16 @@ class _FridgeStatusSection extends StatelessWidget {
   const _FridgeStatusSection();
   @override
   Widget build(BuildContext context) {
-    // TemperatureProvider 변경 감지
     final tempProvider = context.watch<TemperatureProvider>();
+
+    if (tempProvider.isLoading) {
+      return const SizedBox(
+        height: 150,
+        child: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
 
     return Row(
       children: [
@@ -115,9 +120,9 @@ class _FridgeStatusSection extends StatelessWidget {
                 context, const TemperatureControlModal(isFreezer: true)),
             child: _FridgeCard(
               title: '냉동고',
-              temp: '${tempProvider.freezerTemp.toStringAsFixed(1)}°C',
-              humidity: '${tempProvider.freezerHumidity.toStringAsFixed(0)}%',
-              gas: tempProvider.freezerGasStatus,
+              temp: '${tempProvider.freezerCurrentTemp.toStringAsFixed(1)}°C',
+              humidity: '${tempProvider.freezerCurrentHumidity.toStringAsFixed(0)}%',
+              gas: tempProvider.freezerCurrentGasStatus,
             ),
           ),
         ),
@@ -128,9 +133,9 @@ class _FridgeStatusSection extends StatelessWidget {
                 context, const TemperatureControlModal(isFreezer: false)),
             child: _FridgeCard(
               title: '냉장고',
-              temp: '${tempProvider.fridgeTemp.toStringAsFixed(1)}°C',
-              humidity: '${tempProvider.fridgeHumidity.toStringAsFixed(0)}%',
-              gas: tempProvider.fridgeGasStatus,
+              temp: '${tempProvider.fridgeCurrentTemp.toStringAsFixed(1)}°C',
+              humidity: '${tempProvider.fridgeCurrentHumidity.toStringAsFixed(0)}%',
+              gas: tempProvider.fridgeCurrentGasStatus,
             ),
           ),
         ),
@@ -159,12 +164,10 @@ class _ExpiringAndShoppingSection extends StatelessWidget {
     );
   }
 
-  /// '유통기한 임박 식품' 목록
   Widget _buildExpiringFoodSection(BuildContext context) {
     final foodProvider = context.watch<FoodProvider>();
     final allFoodItems = foodProvider.foodItems;
 
-    // 유통기한 임박 순 정렬 후 상위 2개 필터링
     final sortedItems = [...allFoodItems];
     sortedItems.sort((a, b) => a.expiryDate.compareTo(b.expiryDate));
     final expiringSoonItems = sortedItems.take(2).toList();
@@ -211,7 +214,6 @@ class _ExpiringAndShoppingSection extends StatelessWidget {
     );
   }
 
-  /// '장보기 목록' 미리보기
   Widget _buildShoppingListSection(BuildContext context) {
     final shoppingListProvider = context.watch<ShoppingListProvider>();
     return Column(
@@ -220,7 +222,6 @@ class _ExpiringAndShoppingSection extends StatelessWidget {
       children: [
         const _SectionTitle(title: '장보기 목록'),
         const SizedBox(height: 10),
-        // 상위 2개 아이템만 표시
         ...List.generate(2, (index) {
           if (index < shoppingListProvider.shoppingItems.length) {
             final item = shoppingListProvider.shoppingItems[index];
@@ -481,7 +482,6 @@ class _NutritionSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     final nutritionProvider = context.watch<DailyNutritionProvider>();
 
-    // 오늘의 총 섭취 칼로리 계산
     const meals = ['아침', '점심', '저녁', '아침간식', '점심간식', '저녁간식'];
     final today = nutritionProvider.selectedDate;
     double consumedKcal = 0.0;
@@ -541,7 +541,6 @@ class _NutritionSummary extends StatelessWidget {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    // 영양 탭으로 이동
                     (bottomNavKey.currentState as dynamic)?.onItemTapped(3);
                   },
                   style: ElevatedButton.styleFrom(

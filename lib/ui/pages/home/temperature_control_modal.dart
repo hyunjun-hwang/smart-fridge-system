@@ -19,39 +19,28 @@ class TemperatureControlModal extends StatefulWidget {
 }
 
 class _TemperatureControlModalState extends State<TemperatureControlModal> {
-  late double _currentTemp;
-  late double _currentHumidity;
-
-  @override
-  void initState() {
-    super.initState();
-    final provider = context.read<TemperatureProvider>();
-    if (widget.isFreezer) {
-      _currentTemp = provider.freezerTemp;
-      _currentHumidity = provider.freezerHumidity;
-    } else {
-      _currentTemp = provider.fridgeTemp;
-      _currentHumidity = provider.fridgeHumidity;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final provider = context.read<TemperatureProvider>();
+    final provider = context.watch<TemperatureProvider>();
 
     final title = widget.isFreezer ? '냉동고' : '냉장고';
     final minTemp = widget.isFreezer ? -25.0 : 0.0;
     final maxTemp = widget.isFreezer ? -15.0 : 6.0;
-    final gasStatus =
-    widget.isFreezer ? provider.freezerGasStatus : provider.fridgeGasStatus;
+
+    final double targetTemp = widget.isFreezer
+        ? provider.freezerTargetTemp
+        : provider.fridgeTargetTemp;
+
+    final String gasStatus = widget.isFreezer
+        ? provider.freezerCurrentGasStatus
+        : provider.fridgeCurrentGasStatus;
+
     final isWarning = gasStatus != '정상';
     final iceMakerMinutes = widget.isFreezer ? 15 : null;
 
-    final Function(double) onTempChanged =
-    widget.isFreezer ? provider.updateFreezerTemp : provider.updateFridgeTemp;
-    final Function(double) onHumidityChanged = widget.isFreezer
-        ? provider.updateFreezerHumidity
-        : provider.updateFridgeHumidity;
+    final Function(double) onTargetTempChanged = widget.isFreezer
+        ? provider.updateFreezerTargetTemp
+        : provider.updateFridgeTargetTemp;
 
     return Container(
       decoration: const BoxDecoration(
@@ -75,35 +64,33 @@ class _TemperatureControlModalState extends State<TemperatureControlModal> {
                       color: const Color(0xFF003508))),
             ),
             const SizedBox(height: 30),
-            // 온도, 습도, 가스 등 상태 표시
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Expanded(
                   child: _buildSliderWithLabels(
-                    label: '온도',
-                    value: _currentTemp,
-                    displayValue: '${_currentTemp.round()}°C',
+                    label: '온도 설정',
+                    value: targetTemp,
+                    displayValue: '${targetTemp.round()}°C',
                     min: minTemp,
                     max: maxTemp,
                     onChanged: (val) {
-                      setState(() => _currentTemp = val);
-                      onTempChanged(val);
+                      onTargetTempChanged(val);
                     },
                   ),
                 ),
                 Expanded(
                   child: _buildSliderWithLabels(
                     label: '습도',
-                    value: _currentHumidity,
-                    displayValue: '${_currentHumidity.round()}%',
+                    value: widget.isFreezer
+                        ? provider.freezerCurrentHumidity
+                        : provider.fridgeCurrentHumidity,
+                    displayValue:
+                    '${(widget.isFreezer ? provider.freezerCurrentHumidity : provider.fridgeCurrentHumidity).round()}%',
                     min: 0,
                     max: 100,
-                    onChanged: (val) {
-                      setState(() => _currentHumidity = val);
-                      onHumidityChanged(val);
-                    },
+                    onChanged: null, // 비활성화
                   ),
                 ),
                 Expanded(
@@ -143,8 +130,10 @@ class _TemperatureControlModalState extends State<TemperatureControlModal> {
     required String displayValue,
     required double min,
     required double max,
-    required ValueChanged<double> onChanged,
+    required ValueChanged<double>? onChanged,
   }) {
+    final activeColor = onChanged != null ? kAccentColor : Colors.grey;
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
@@ -163,9 +152,10 @@ class _TemperatureControlModalState extends State<TemperatureControlModal> {
                 const RoundSliderThumbShape(enabledThumbRadius: 12.0),
                 overlayShape:
                 const RoundSliderOverlayShape(overlayRadius: 20.0),
-                activeTrackColor: kAccentColor,
+                activeTrackColor: activeColor,
                 inactiveTrackColor: Colors.grey[300],
                 thumbColor: Colors.white,
+                disabledThumbColor: Colors.grey[400],
               ),
               child: Slider(
                 value: value,
