@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -49,9 +50,53 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-/// 상단 바 위젯
-class _TopBar extends StatelessWidget {
+/// 상단 바 위젯 (실시간 갱신)
+class _TopBar extends StatefulWidget {
   const _TopBar();
+
+  @override
+  State<_TopBar> createState() => _TopBarState();
+}
+
+class _TopBarState extends State<_TopBar> {
+  late String _greeting;
+  Timer? _timer;
+
+  String _getGreeting() {
+    final hour = DateTime.now().hour; // 0~23
+    if (hour >= 5 && hour < 11) {
+      return '안녕하세요! 좋은 아침이에요.';
+    } else if (hour >= 11 && hour < 15) {
+      return '안녕하세요! 맛있는 점심 드세요.';
+    } else if (hour >= 15 && hour < 21) {
+      return '안녕하세요! 즐거운 저녁시간이에요.';
+    } else {
+      return '안녕하세요! 편안한 밤 되세요.';
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _greeting = _getGreeting();
+
+    // 1분마다 문구 갱신 (필요시 간격 조절 가능)
+    _timer = Timer.periodic(const Duration(minutes: 1), (_) {
+      final next = _getGreeting();
+      if (next != _greeting) {
+        setState(() {
+          _greeting = next;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -61,7 +106,7 @@ class _TopBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text('안녕하세요! 좋은 아침이에요.', style: kTitleTextStyle),
+          Text(_greeting, style: kTitleTextStyle),
           IconButton(
             icon: const Icon(Icons.notifications_none, color: kTextColor),
             onPressed: () => _showAppModal(context, const NotificationModal()),
@@ -376,9 +421,7 @@ class _ExpiringFoodItem extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             child: Text(dDayText,
                 style: TextStyle(
-                    color: dDayColor,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold)),
+                    color: dDayColor, fontSize: 16, fontWeight: FontWeight.bold)),
           ),
           const SizedBox(width: 8),
           Text(name, style: kBodyTextStyle),
